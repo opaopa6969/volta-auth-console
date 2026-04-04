@@ -31,7 +31,7 @@ export default function App() {
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error}</p>
-          <a href="https://auth.unlaxer.org/login?return_to=https://auth-console.unlaxer.org/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Login with volta-auth</a>
+          <a href="/login?return_to=/console/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Login with volta-auth</a>
         </div>
       </div>
     );
