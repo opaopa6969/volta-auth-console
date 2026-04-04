@@ -1,4 +1,4 @@
-const BASE = '/api/v1';
+const BASE = 'https://auth.unlaxer.org/api/v1';
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -7,7 +7,6 @@ async function request(path, options = {}) {
     ...options,
   });
   if (res.status === 401) {
-    window.location.href = '/login?return_to=' + encodeURIComponent(window.location.href);
     throw new Error('Unauthorized');
   }
   if (!res.ok) {
