@@ -54,6 +54,9 @@ export const api = {
   // Webhooks
   listWebhooks: (tid) => items(`/tenants/${tid}/webhooks`),
 
+  // MFA
+  adminResetMfa: (tid, uid) => request(`/tenants/${tid}/members/${uid}/mfa`, { method: 'DELETE' }),
+
   // Keys
   listKeys: () => items('/admin/keys'),
   rotateKeys: () => request('/admin/keys/rotate', { method: 'POST' }),

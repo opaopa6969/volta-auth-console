@@ -6,6 +6,7 @@ const columns = [
   { key: 'name', label: 'Name' },
   { key: 'slug', label: 'Slug' },
   { key: 'plan', label: 'Plan' },
+  { key: 'mfaRequired', label: 'MFA', render: (v) => v ? '🔒 Required' : 'Optional' },
   { key: 'memberCount', label: 'Members' },
   { key: 'suspended', label: 'Status', render: (v) => v ? '🔴 Suspended' : '🟢 Active' },
 ];
