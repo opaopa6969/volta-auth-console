@@ -10,6 +10,8 @@ export default function Webhooks() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ endpoint_url: '', events: '' });
   const [saving, setSaving] = useState(false);
+  const [deliveries, setDeliveries] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
   const user = useAuthStore(s => s.user);
   const tid = user?.tenantId;
 
@@ -72,6 +74,14 @@ export default function Webhooks() {
     }},
     { key: '_actions', label: '', render: (_, row) => (
       <div className="flex gap-1">
+        <button onClick={async () => {
+          if (expandedId === row.id) { setExpandedId(null); return; }
+          if (!deliveries[row.id]) {
+            const d = await api.listWebhookDeliveries(tid, row.id).catch(() => []);
+            setDeliveries(prev => ({ ...prev, [row.id]: d }));
+          }
+          setExpandedId(row.id);
+        }} className="text-xs text-purple-400 hover:text-purple-300">History</button>
         <button onClick={() => handleEdit(row)} className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
         <button onClick={() => handleDelete(row)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
       </div>
@@ -114,6 +124,35 @@ export default function Webhooks() {
       )}
 
       <DataTable columns={columns} data={webhooks} searchKeys={['endpointUrl', 'url']} />
+
+      {expandedId && deliveries[expandedId] && (
+        <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">
+            Delivery History ({deliveries[expandedId].length})
+            <button onClick={() => setExpandedId(null)} className="ml-2 text-xs text-gray-500 hover:text-gray-300">Close</button>
+          </h3>
+          {deliveries[expandedId].length === 0 ? (
+            <p className="text-gray-500 text-sm">No deliveries yet</p>
+          ) : (
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {deliveries[expandedId].map(d => (
+                <div key={d.id} className="flex items-center gap-3 text-xs bg-gray-900 rounded px-3 py-1.5">
+                  <span className={d.status === 'success' ? 'text-green-400' : 'text-red-400'}>
+                    {d.status === 'success' ? '✓' : '✗'} {d.statusCode || '-'}
+                  </span>
+                  <span className="text-gray-400">{d.eventType || d.event_type}</span>
+                  <span className="text-gray-600">{d.createdAt || d.created_at ? new Date(d.createdAt || d.created_at).toLocaleString('ja-JP') : ''}</span>
+                  {d.responseBody || d.response_body ? (
+                    <span className="text-gray-600 truncate max-w-xs" title={d.responseBody || d.response_body}>
+                      {(d.responseBody || d.response_body || '').substring(0, 80)}
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
