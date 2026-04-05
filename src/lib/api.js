@@ -53,6 +53,9 @@ export const api = {
 
   // Webhooks
   listWebhooks: (tid) => items(`/tenants/${tid}/webhooks`),
+  createWebhook: (tid, data) => request(`/tenants/${tid}/webhooks`, { method: 'POST', body: JSON.stringify(data) }),
+  updateWebhook: (tid, wid, data) => request(`/tenants/${tid}/webhooks/${wid}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteWebhook: (tid, wid) => request(`/tenants/${tid}/webhooks/${wid}`, { method: 'DELETE' }),
 
   // MFA
   adminResetMfa: (tid, uid) => request(`/tenants/${tid}/members/${uid}/mfa`, { method: 'DELETE' }),
