@@ -31,6 +31,7 @@ export const api = {
   adminTenants: () => items('/admin/tenants'),
   suspendTenant: (tid) => request(`/admin/tenants/${tid}/suspend`, { method: 'POST' }),
   activateTenant: (tid) => request(`/admin/tenants/${tid}/activate`, { method: 'POST' }),
+  updateTenant: (tid, data) => request(`/tenants/${tid}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Members
   listMembers: (tid) => items(`/tenants/${tid}/members`),

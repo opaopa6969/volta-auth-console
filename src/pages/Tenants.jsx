@@ -28,11 +28,35 @@ export default function Tenants() {
     }
   };
 
+  const handleMfaToggle = async (tenant) => {
+    const newValue = !tenant.mfaRequired;
+    const msg = newValue
+      ? `Enable MFA requirement for "${tenant.name}"? Members will have 7 days to set up MFA.`
+      : `Disable MFA requirement for "${tenant.name}"?`;
+    if (!confirm(msg)) return;
+    try {
+      await api.updateTenant(tenant.id, {
+        mfa_required: newValue,
+        mfa_grace_days: newValue ? 7 : 0,
+      });
+      refresh();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const columns = [
     { key: 'name', label: 'Name' },
     { key: 'slug', label: 'Slug' },
     { key: 'plan', label: 'Plan' },
-    { key: 'mfaRequired', label: 'MFA', render: (v) => v ? '🔒 Required' : 'Optional' },
+    { key: 'mfaRequired', label: 'MFA', render: (v, row) => (
+      <button onClick={() => handleMfaToggle(row)}
+        className={`text-xs px-2 py-0.5 rounded ${v
+          ? 'bg-yellow-900/50 text-yellow-400 hover:bg-yellow-800/50'
+          : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}`}>
+        {v ? '🔒 Required' : 'Optional'}
+      </button>
+    )},
     { key: 'memberCount', label: 'Members' },
     { key: 'suspended', label: 'Status', render: (v, row) => (
       <button onClick={() => handleToggle(row)}

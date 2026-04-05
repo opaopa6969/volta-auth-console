@@ -12,6 +12,7 @@ import Audit from './pages/Audit';
 import IdpConfig from './pages/IdpConfig';
 import Webhooks from './pages/Webhooks';
 import SigningKeys from './pages/SigningKeys';
+import Settings from './pages/Settings';
 
 export default function App() {
   const { user, loading, error, init } = useAuthStore();
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/idp" element={<IdpConfig />} />
           <Route path="/webhooks" element={<Webhooks />} />
           <Route path="/keys" element={<SigningKeys />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>
     </div>

@@ -11,6 +11,7 @@ const links = [
   { to: '/idp', label: 'IdP Config', icon: '🔐' },
   { to: '/webhooks', label: 'Webhooks', icon: '🔗' },
   { to: '/keys', label: 'Signing Keys', icon: '🗝️' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function Sidebar({ user }) {
