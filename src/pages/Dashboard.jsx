@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
+import AuthFlowStatus from '../components/AuthFlowStatus';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -31,7 +32,10 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-white mb-6">Dashboard</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-white">Dashboard</h2>
+        <AuthFlowStatus state="AUTHENTICATED" />
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map(c => (
           <div key={c.label} className="bg-gray-800 rounded-lg p-5 border border-gray-700">

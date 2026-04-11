@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { useAuthFlow } from './hooks/useAuthFlow';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
@@ -13,11 +13,13 @@ import IdpConfig from './pages/IdpConfig';
 import Webhooks from './pages/Webhooks';
 import SigningKeys from './pages/SigningKeys';
 import Settings from './pages/Settings';
+import Monitor from './pages/Monitor';
 
 export default function App() {
-  const { user, loading, error, init } = useAuthStore();
+  const { user, loading, error, authenticated } = useAuthStore();
 
-  useEffect(() => { init(); }, [init]);
+  // tramli session-resume flow — syncs result into authStore
+  useAuthFlow();
 
   if (loading) {
     return (
@@ -27,12 +29,15 @@ export default function App() {
     );
   }
 
-  if (error) {
+  if (!authenticated) {
+    const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
-          <a href="/login?return_to=/console/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Login with volta-auth</a>
+          <p className="text-red-400 mb-4">{error || 'Not authenticated'}</p>
+          <a href={`/login?return_to=${returnTo}`} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Login with volta-auth
+          </a>
         </div>
       </div>
     );
@@ -54,6 +59,7 @@ export default function App() {
           <Route path="/webhooks" element={<Webhooks />} />
           <Route path="/keys" element={<SigningKeys />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/monitor" element={<Monitor />} />
         </Routes>
       </main>
     </div>

@@ -20,11 +20,21 @@ function items(path, options) {
   return request(path, options).then(d => d.items || d);
 }
 
+function buildQuery(params = {}) {
+  const entries = Object.entries(params).filter(([, v]) => v != null && v !== '');
+  if (entries.length === 0) return '';
+  return '?' + new URLSearchParams(Object.fromEntries(entries)).toString();
+}
+
+function paginated(path, params = {}) {
+  return request(`${path}${buildQuery(params)}`);
+}
+
 export const api = {
   // Users
   me: () => request('/users/me'),
   myTenants: () => request('/users/me/tenants').then(d => d.items || d),
-  listUsers: () => items('/admin/users'),
+  listUsers: (params) => params ? paginated('/admin/users', params) : items('/admin/users'),
 
   // Tenants
   getTenant: (tid) => request(`/tenants/${tid}`),
@@ -34,20 +44,21 @@ export const api = {
   updateTenant: (tid, data) => request(`/tenants/${tid}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Members
-  listMembers: (tid) => items(`/tenants/${tid}/members`),
+  listMembers: (tid, params) => params ? paginated(`/tenants/${tid}/members`, params) : items(`/tenants/${tid}/members`),
   updateMember: (tid, mid, data) => request(`/tenants/${tid}/members/${mid}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Invitations
-  listInvitations: (tid) => items(`/tenants/${tid}/invitations`),
+  listInvitations: (tid, params) => params ? paginated(`/tenants/${tid}/invitations`, params) : items(`/tenants/${tid}/invitations`),
   createInvitation: (tid, data) => request(`/tenants/${tid}/invitations`, { method: 'POST', body: JSON.stringify(data) }),
   deleteInvitation: (tid, iid) => request(`/tenants/${tid}/invitations/${iid}`, { method: 'DELETE' }),
 
   // Sessions
+  listSessions: (params) => paginated('/admin/sessions', params),
   mySessions: () => fetch('/api/me/sessions', { credentials: 'include' }).then(r => r.json()).then(d => d.items || d),
   revokeSession: (id) => fetch(`/auth/sessions/${id}`, { method: 'DELETE', credentials: 'include' }).then(r => r.json()),
 
   // Audit
-  listAudit: () => items('/admin/audit'),
+  listAudit: (params) => params ? paginated('/admin/audit', params) : items('/admin/audit'),
 
   // IdP
   listIdpConfigs: (tid) => items(`/tenants/${tid}/idp-configs`),

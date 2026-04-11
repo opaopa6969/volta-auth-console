@@ -1,7 +1,7 @@
 {
   "name": "volta-auth-console",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "NODE_OPTIONS='--max-http-header-size=65536' vite",
@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@unlaxer/dxe-suite": "file:../DxE-suite",
+    "@unlaxer/tramli": "^3.6.1",
+    "@unlaxer/tramli-react": "^0.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
