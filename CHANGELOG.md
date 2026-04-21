@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **SAAS-016 + AUTH-VIZ Phase 2 frontend**: Monitor ページを preview から本番実装に。`EventSource` で `/viz/auth/stream` (SSE) を購読し、login/logout/MFA 系イベントをリアルタイム feed 表示。`/viz/flows` を起動時に fetch して各 flow の mermaid 定義を FlowCard に表示、SSE イベント種別から per-flow ライブカウントを加算。`@unlaxer/tramli-viz` が npm に公開されたら `TRAMLI_VIZ_AVAILABLE=true` にして動的 import に切り替える二段構え。
+
 ### Planned
 - Move `react-router-dom` and `zustand` from `devDependencies` to `dependencies`
 - Unify API path prefixes (`/api/me/`, `/auth/` → `/api/v1/`)
