@@ -5,11 +5,19 @@ const SSE_PATH = '/viz/auth/stream';
 const FLOWS_PATH = '/viz/flows';
 const MAX_FEED_EVENTS = 200;
 
-// @unlaxer/tramli-viz は未公開 (tramli#37 待ち). 公開され次第 dynamic import に切替える.
-const TRAMLI_VIZ_AVAILABLE = false;
+// @unlaxer/tramli-viz は npm 公開済 (0.2.0). dynamic import でバンドルに
+// 組み込み、接続先は auth-proxy の /viz/ws (Redis → VizDashboard protocol
+// bridge, AUTH-VIZ Phase 1)。
+const TRAMLI_VIZ_AVAILABLE = true;
 const VizDashboardLazy = TRAMLI_VIZ_AVAILABLE
   ? lazy(() => import('@unlaxer/tramli-viz').then(m => ({ default: m.VizDashboard })))
   : null;
+
+function resolveVizWsUrl() {
+  if (typeof window === 'undefined') return '';
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/viz/ws`;
+}
 
 function eventBadgeClass(type) {
   if (!type) return 'bg-gray-700 text-gray-300';
@@ -191,11 +199,18 @@ function MonitorView() {
         <LiveFeed events={events} />
       </div>
 
-      {/* tramli-viz dashboard — opt-in when package is published */}
+      {/* tramli-viz dashboard — wired to auth-proxy /viz/ws */}
       {TRAMLI_VIZ_AVAILABLE && VizDashboardLazy && (
         <div className="mt-6">
           <Suspense fallback={<div className="text-gray-400">Loading visualization…</div>}>
-            <VizDashboardLazy flows={FLOW_NAMES} theme="dark" showMetrics showLiveFeed />
+            <VizDashboardLazy
+              wsUrl={resolveVizWsUrl()}
+              layout="layered"
+              theme="dark"
+              showMetrics
+              showCarPool
+              showReplay
+            />
           </Suspense>
         </div>
       )}

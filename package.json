@@ -13,6 +13,7 @@
     "@unlaxer/dxe-suite": "file:../DxE-suite",
     "@unlaxer/tramli": "^3.6.1",
     "@unlaxer/tramli-react": "^0.2.0",
+    "@unlaxer/tramli-viz": "^0.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
