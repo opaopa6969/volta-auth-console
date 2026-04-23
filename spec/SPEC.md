@@ -1636,3 +1636,242 @@ interface PaginatedResponse<T> {
 | usePaginatedQuery | サーバーサイドページネーション用フック。URL SearchParams と状態を同期する。 |
 | DataTable | クライアントサイドの検索・ソート・ページングを持つテーブルコンポーネント。全件データを受け取る。 |
 | ServerDataTable | サーバーサイドのページング対応テーブルコンポーネント。usePaginatedQuery と組み合わせて使用する。 |
+
+---
+
+## 付録 D: Mermaid 図
+
+### D.1 画面構成図 (graph TB)
+
+12 画面 + Sidebar の構成を示す。
+
+```mermaid
+graph TB
+    App["App.jsx\nuseAuthFlow()"]
+
+    subgraph Sidebar["Sidebar (w-56)"]
+        S1[Dashboard /]
+        S2[Users /users]
+        S3[Tenants /tenants]
+        S4[Members /members]
+        S5[Invitations /invitations]
+        S6[Sessions /sessions]
+        S7[Audit /audit]
+        S8[IdpConfig /idp]
+        S9[Webhooks /webhooks]
+        S10[SigningKeys /keys]
+        S11[Settings /settings]
+        S12["Monitor /monitor\n(ADMIN/OWNER only)"]
+    end
+
+    subgraph Pages["Pages (flex-1 p-6)"]
+        P1["Dashboard\n統計カード×4\nAuthFlowStatus"]
+        P2["Users\nServerDataTable\nResetMFA"]
+        P3["Tenants\nDataTable\nSuspend/Activate\nMFA toggle"]
+        P4["Members\nServerDataTable\nロール色分け"]
+        P5["Invitations\nServerDataTable\nステータスフィルター"]
+        P6["Sessions\nServerDataTable\nRevoke"]
+        P7["Audit\nServerDataTable\nDateRangeFilter"]
+        P8["IdpConfig\nDataTable (read-only)"]
+        P9["Webhooks\nCRUD\n配信履歴"]
+        P10["SigningKeys\nDataTable\nRotate Key"]
+        P11["Settings\nProfile / MFA / Sessions"]
+        P12["Monitor\nSSE Feed\nVizDashboard (lazy)"]
+    end
+
+    subgraph Components["共通コンポーネント"]
+        C1[DataTable]
+        C2[ServerDataTable]
+        C3[AuthFlowStatus]
+        C4[DateRangeFilter]
+    end
+
+    App --> Sidebar
+    App --> Pages
+
+    S1 --> P1
+    S2 --> P2
+    S3 --> P3
+    S4 --> P4
+    S5 --> P5
+    S6 --> P6
+    S7 --> P7
+    S8 --> P8
+    S9 --> P9
+    S10 --> P10
+    S11 --> P11
+    S12 --> P12
+
+    P1 --> C3
+    P2 --> C2
+    P3 --> C1
+    P4 --> C2
+    P5 --> C2
+    P6 --> C2
+    P7 --> C2
+    P7 --> C4
+    P8 --> C1
+    P9 --> C1
+    P10 --> C1
+```
+
+---
+
+### D.2 Zustand Store ↔ API フロー (sequenceDiagram)
+
+`useAuthFlow` フックが `sessionResumeDefinition` を経由して `authStore` を更新し、
+各ページが `authStore` から取得したユーザー情報を使って API を呼び出す流れ。
+
+```mermaid
+sequenceDiagram
+    participant App as App.jsx
+    participant Hook as useAuthFlow
+    participant Flow as sessionResumeDefinition<br/>(tramli)
+    participant Guard as SessionResumeGuard
+    participant API as api.js
+    participant Store as authStore (Zustand)
+    participant Page as Page Component
+
+    App->>Hook: useAuthFlow() mount
+    Hook->>Flow: useFlow(sessionResumeDefinition)
+    Flow->>Guard: validate() — CHECKING state
+    Guard->>API: Promise.all([me(), myTenants()])
+    API-->>Guard: { user, tenants } | Error
+
+    alt セッション有効
+        Guard-->>Flow: accepted { ResumeUser, ResumeTenants }
+        Flow-->>Hook: state = AUTHENTICATED
+        Hook->>Store: setAuth(user, tenants)
+        Store-->>App: authenticated=true, user, tenants
+        App->>Page: render Pages + Sidebar
+        Page->>Store: useAuthStore(s => s.user)
+        Store-->>Page: user object
+        Page->>API: listUsers() / adminTenants() / etc.
+        API-->>Page: items[]
+    else セッション無効
+        Guard-->>Flow: rejected → onAnyError
+        Flow-->>Hook: state = NO_SESSION
+        Hook->>Store: setUnauthenticated(message)
+        Store-->>App: authenticated=false
+        App->>App: /login?return_to=... リンク表示
+    end
+```
+
+---
+
+### D.3 認証フロー状態遷移図 (stateDiagram)
+
+`authFlowDefinition` (10 状態) と `sessionResumeDefinition` (3 状態) を示す。
+
+```mermaid
+stateDiagram-v2
+    %% ── authFlowDefinition (volta-auth-oidc) ──
+    state "authFlowDefinition\n(volta-auth-oidc  TTL:10m)" as OIDCFlow {
+        [*] --> UNAUTHENTICATED
+
+        UNAUTHENTICATED --> LOGIN_REDIRECT : auto: LoginRedirectInit
+        LOGIN_REDIRECT  --> LOGIN_PENDING  : auto: RedirectToLogin
+        LOGIN_PENDING   --> CALLBACK_RECEIVED : external: IdpCallbackGuard
+
+        CALLBACK_RECEIVED --> USER_RESOLVED : auto: ResolveUser
+
+        state mfa_branch <<choice>>
+        USER_RESOLVED --> mfa_branch : branch: MfaCheck
+
+        mfa_branch --> SESSION_CREATED : no_mfa → SessionCreator
+        mfa_branch --> MFA_PENDING     : mfa_required
+
+        MFA_PENDING --> SESSION_CREATED : external: MfaVerifyGuard + SessionCreator
+
+        SESSION_CREATED --> COMPLETE : auto: FinalRedirect
+
+        UNAUTHENTICATED --> FAILED : onAnyError
+        LOGIN_REDIRECT  --> FAILED : onAnyError
+        LOGIN_PENDING   --> FAILED : onAnyError
+        CALLBACK_RECEIVED --> FAILED : onAnyError
+        USER_RESOLVED   --> FAILED : onAnyError
+        MFA_PENDING     --> FAILED : onAnyError
+        SESSION_CREATED --> FAILED : onAnyError
+
+        COMPLETE   --> [*]
+        FAILED     --> [*]
+        EXPIRED    --> [*]
+    }
+
+    %% ── sessionResumeDefinition (session-resume) ──
+    state "sessionResumeDefinition\n(session-resume  TTL:30s)" as ResumeFlow {
+        [*] --> CHECKING
+
+        CHECKING --> AUTHENTICATED : external: SessionResumeGuard (accepted)
+        CHECKING --> NO_SESSION    : onAnyError
+
+        AUTHENTICATED --> [*]
+        NO_SESSION    --> [*]
+    }
+```
+
+---
+
+### D.4 State Store 形状 (erDiagram)
+
+`authStore` の構造と、各フローのコンテキストキーが保持するデータ型の関係を示す。
+
+```mermaid
+erDiagram
+    AUTH_STORE {
+        object  user              "null | UserObject"
+        array   tenants           "TenantObject[]"
+        boolean loading           "initial: true"
+        string  error             "null | string"
+        boolean authenticated     "initial: false"
+    }
+
+    USER_OBJECT {
+        string  id
+        string  email
+        string  displayName
+        string  role              "ADMIN | OWNER | MEMBER | VIEWER"
+        string  tenantId
+    }
+
+    TENANT_OBJECT {
+        string  id
+        string  name
+        boolean suspended
+        boolean mfa_required
+        int     mfa_grace_days
+    }
+
+    OIDC_FLOW_CONTEXT {
+        string  auth_request_origin   "FlowKey: RequestOrigin"
+        object  auth_config           "FlowKey: AuthConfig"
+        string  auth_login_redirect   "FlowKey: LoginRedirect { url }"
+        object  auth_idp_callback     "FlowKey: IdpCallback { code, state }"
+        object  auth_resolved_user    "FlowKey: ResolvedUser"
+        object  auth_mfa_result       "FlowKey: MfaResult { verified }"
+        object  auth_session_cookie   "FlowKey: SessionCookie { active }"
+        string  auth_final_redirect   "FlowKey: FinalRedirect { url }"
+        array   auth_user_tenants     "FlowKey: UserTenants"
+    }
+
+    RESUME_FLOW_CONTEXT {
+        object  resume_user           "FlowKey: ResumeUser"
+        array   resume_tenants        "FlowKey: ResumeTenants"
+    }
+
+    PAGINATED_QUERY_PARAMS {
+        int     page
+        int     size
+        string  sort                  "optional  -prefix=desc"
+        string  q                     "optional search"
+        object  filters               "extra filters (event, status, etc.)"
+    }
+
+    AUTH_STORE ||--o| USER_OBJECT        : "user"
+    AUTH_STORE ||--o{ TENANT_OBJECT      : "tenants"
+    OIDC_FLOW_CONTEXT ||--o| USER_OBJECT : "auth_resolved_user → setAuth"
+    RESUME_FLOW_CONTEXT ||--o| USER_OBJECT : "resume_user → setAuth"
+    RESUME_FLOW_CONTEXT ||--o{ TENANT_OBJECT : "resume_tenants → setAuth"
+    AUTH_STORE ||..|| OIDC_FLOW_CONTEXT  : "populated by authFlowDefinition"
+    AUTH_STORE ||..|| RESUME_FLOW_CONTEXT : "populated by sessionResumeDefinition"
+```
