@@ -4,8 +4,8 @@ import {
   sessionResumeDefinition,
   ResumeUser,
   ResumeTenants,
-} from '../store/authFlowDefinition';
-import { useAuthStore } from '../store/authStore';
+} from '../store/authFlowDefinition.js';
+import { useAuthStore } from '../store/authStore.js';
 
 /**
  * tramli ベースの認証フロー hook.
