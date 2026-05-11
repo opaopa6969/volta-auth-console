@@ -17,20 +17,23 @@
 
 ## System Overview
 
-```
-Browser
-  │
-  ├── React SPA (volta-auth-console)
-  │     ├── react-router-dom  — client-side routing (12 routes)
-  │     ├── zustand           — authStore (user, tenants, authenticated)
-  │     ├── tramli            — authFlowDefinition (10 states)
-  │     └── tramli-react      — useAuthFlow hook
-  │
-  └── nginx (port 80)
-        ├── /                 → SPA (index.html fallback)
-        ├── /api/             → volta-auth-proxy :7070
-        ├── /auth/            → volta-auth-proxy :7070
-        └── /.well-known/     → volta-auth-proxy :7070
+```mermaid
+flowchart TB
+    Browser
+    subgraph SPA["React SPA (volta-auth-console)"]
+        Router["react-router-dom — client-side routing (12 routes)"]
+        Z["zustand — authStore (user, tenants, authenticated)"]
+        Tramli["tramli — authFlowDefinition (10 states)"]
+        TR["tramli-react — useAuthFlow hook"]
+    end
+    subgraph Nginx["nginx (port 80)"]
+        N1["/ → SPA (index.html fallback)"]
+        N2["/api/ → volta-auth-proxy :7070"]
+        N3["/auth/ → volta-auth-proxy :7070"]
+        N4["/.well-known/ → volta-auth-proxy :7070"]
+    end
+    Browser --> SPA
+    Browser --> Nginx
 ```
 
 The SPA has no server-side rendering. All navigation is client-side. The auth check on mount uses the tramli `sessionResumeDefinition` flow, which calls `/api/v1/users/me` — if the cookie session is valid the user is authenticated immediately; otherwise they are redirected to `/login`.
@@ -62,32 +65,20 @@ The SPA has no server-side rendering. All navigation is client-side. The auth ch
 
 Defined in `src/store/authFlowDefinition.js`. Mirrors the Java-side `AuthState` enum in volta-auth-proxy.
 
-```
-UNAUTHENTICATED (initial)
-  │ Auto: LoginRedirectInit
-  ▼
-LOGIN_REDIRECT
-  │ Auto: RedirectToLogin (noop — UI drives redirect)
-  ▼
-LOGIN_PENDING
-  │ External: IdpCallbackGuard (waits for ?code=&state= in URL)
-  ▼
-CALLBACK_RECEIVED
-  │ Auto: ResolveUser → api.me()
-  ▼
-USER_RESOLVED
-  │ Branch: MfaCheck
-  ├─ no_mfa  ──→ SESSION_CREATED (SessionCreator: api.myTenants())
-  └─ mfa_required ──→ MFA_PENDING
-                          │ External: MfaVerifyGuard (maxRetries: 3)
-                          ▼
-                      SESSION_CREATED
-                          │ Auto: FinalRedirect (noop)
-                          ▼
-                        COMPLETE (terminal)
-
-FAILED  (terminal — onAnyError)
-EXPIRED (terminal)
+```mermaid
+stateDiagram-v2
+    [*] --> UNAUTHENTICATED
+    UNAUTHENTICATED --> LOGIN_REDIRECT : Auto LoginRedirectInit
+    LOGIN_REDIRECT --> LOGIN_PENDING : Auto RedirectToLogin (noop)
+    LOGIN_PENDING --> CALLBACK_RECEIVED : External IdpCallbackGuard
+    CALLBACK_RECEIVED --> USER_RESOLVED : Auto ResolveUser
+    USER_RESOLVED --> SESSION_CREATED : Branch MfaCheck (no_mfa)
+    USER_RESOLVED --> MFA_PENDING : Branch MfaCheck (mfa_required)
+    MFA_PENDING --> SESSION_CREATED : External MfaVerifyGuard
+    SESSION_CREATED --> COMPLETE : Auto FinalRedirect
+    COMPLETE --> [*]
+    FAILED --> [*]
+    EXPIRED --> [*]
 ```
 
 FlowContext keys (mirroring Java `AuthData`):
@@ -106,11 +97,13 @@ FlowContext keys (mirroring Java `AuthData`):
 
 ### sessionResumeDefinition — 2-state resume
 
-```
-CHECKING (initial)
-  │ External: SessionResumeGuard → api.me() + api.myTenants() (parallel)
-  ├─ success ──→ AUTHENTICATED (terminal)
-  └─ error   ──→ NO_SESSION    (terminal)
+```mermaid
+stateDiagram-v2
+    [*] --> CHECKING
+    CHECKING --> AUTHENTICATED : External SessionResumeGuard (success)<br/>api.me() + api.myTenants() (parallel)
+    CHECKING --> NO_SESSION : error
+    AUTHENTICATED --> [*]
+    NO_SESSION --> [*]
 ```
 
 Called on every app mount via `useAuthFlow()`. If `AUTHENTICATED`, `ResumeUser` and `ResumeTenants` are written into zustand `authStore`.
@@ -121,12 +114,13 @@ TTL: 30 seconds (short — resume check only).
 
 ## State Management
 
-```
-zustand authStore
-  ├── user          — from ResumeUser (FlowContext)
-  ├── tenants       — from ResumeTenants (FlowContext)
-  ├── authenticated — true when sessionResumeDefinition reaches AUTHENTICATED
-  └── loading       — true while CHECKING state is active
+```mermaid
+flowchart TB
+    Store["zustand authStore"]
+    Store --> User["user — from ResumeUser (FlowContext)"]
+    Store --> Tenants["tenants — from ResumeTenants (FlowContext)"]
+    Store --> Auth["authenticated — true when sessionResumeDefinition reaches AUTHENTICATED"]
+    Store --> Loading["loading — true while CHECKING state is active"]
 ```
 
 The store is populated exclusively by `useAuthFlow` (tramli result). Direct `api.me()` calls are removed from `authStore.init()` in v0.2.0.
@@ -231,14 +225,15 @@ Or use `envsubst` to template the nginx.conf at container startup.
 
 ## Component Map
 
-```
-App.jsx
-  ├── Sidebar.jsx
-  │     └── [Monitor link — ADMIN/OWNER only]
-  ├── AuthFlowStatus.jsx     (Dashboard)
-  ├── ServerDataTable.jsx    (Users, Sessions, Audit, Members, Invitations)
-  │     └── DateRangeFilter.jsx (Audit only)
-  └── DataTable.jsx          (IdpConfig, Webhooks, SigningKeys — client-side, no pagination)
+```mermaid
+flowchart TB
+    App["App.jsx"]
+    App --> Sidebar["Sidebar.jsx"]
+    Sidebar --> MonitorLink["[Monitor link — ADMIN/OWNER only]"]
+    App --> AuthFlow["AuthFlowStatus.jsx (Dashboard)"]
+    App --> SDT["ServerDataTable.jsx<br/>(Users, Sessions, Audit, Members, Invitations)"]
+    SDT --> DRF["DateRangeFilter.jsx (Audit only)"]
+    App --> DT["DataTable.jsx<br/>(IdpConfig, Webhooks, SigningKeys — client-side, no pagination)"]
 ```
 
 `DataTable` (client-side) and `ServerDataTable` (server-side) coexist intentionally. Pages with small, bounded datasets (IdP configs, webhooks, signing keys) use `DataTable`; pages with unbounded datasets use `ServerDataTable`.
