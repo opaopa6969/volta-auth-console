@@ -1,7 +1,30 @@
-const BASE = '/api/v1';
+// --- URL prefix の規約 ---------------------------------------------------
+// このフロントが叩くサーバー (volta-auth-proxy / Javalin) は、歴史的経緯で
+// 3 種類の prefix を持つ。クライアントから「勝手に統一」するとサーバーの
+// ルート登録 (ApiRouter.java) と食い違って 404 になるため、規約として固定する。
+//
+//   API_BASE  = '/api/v1'  … 管理・テナント・ユーザー系の正規 REST API。
+//                            原則すべてここに寄せる (request() のデフォルト)。
+//   ME_BASE   = '/api/me'  … 「ログイン中ユーザー自身」のセッション一覧/失効。
+//                            サーバー側は /api/me/sessions のみで登録されており
+//                            (/api/v1/users/me/sessions は未実装)、ここだけは
+//                            勝手に /api/v1 へ移せない。移すにはサーバー側の
+//                            ルート追加 + nginx rewrite が必要 → バックログ。
+//   /auth/...              … ForwardAuth / ログイン・ログアウト等の認証
+//                            アクション用。REST リソースではなく意味が異なる
+//                            ので /api/v1 とは別物として扱う。
+//
+// nginx.conf 側は `location /api/` と `location /auth/` の 2 ブロックで
+// まとめて proxy しているので、上記 3 prefix はすべて同一 upstream に届く。
+const API_BASE = '/api/v1';
+const ME_BASE = '/api/me';
 
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  return rawRequest(`${API_BASE}${path}`, options);
+}
+
+async function rawRequest(url, options = {}) {
+  const res = await fetch(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
@@ -53,9 +76,17 @@ export const api = {
   deleteInvitation: (tid, iid) => request(`/tenants/${tid}/invitations/${iid}`, { method: 'DELETE' }),
 
   // Sessions
+  // listSessions は管理者向け (/api/v1/admin/sessions)。
   listSessions: (params) => paginated('/admin/sessions', params),
-  mySessions: () => fetch('/api/me/sessions', { credentials: 'include' }).then(r => r.json()).then(d => d.items || d),
-  revokeSession: (id) => fetch(`/auth/sessions/${id}`, { method: 'DELETE', credentials: 'include' }).then(r => r.json()),
+  // mySessions / revokeSession は「自分自身」のセッションを ME_BASE (/api/me)
+  // で扱う。サーバー側 ( ApiRouter.java ) が /api/me/sessions (GET) と
+  // /api/me/sessions/{id} (DELETE) を登録しているのに合わせる。
+  // 以前は revokeSession だけ /auth/sessions/{id} を叩いていて prefix が
+  // バラバラだったが、サーバーは同一処理を /api/me/sessions/{id} でも提供
+  // しているので、list と同じ namespace に統一した (フロントのみで完結)。
+  // 生 fetch ではなく rawRequest を通すことで 401/非2xx のエラーハンドリングを共通化。
+  mySessions: () => rawRequest(`${ME_BASE}/sessions`).then(d => d.items || d),
+  revokeSession: (id) => rawRequest(`${ME_BASE}/sessions/${id}`, { method: 'DELETE' }),
 
   // Audit
   listAudit: (params) => params ? paginated('/admin/audit', params) : items('/admin/audit'),
