@@ -5,11 +5,16 @@
 //
 //   API_BASE  = '/api/v1'  … 管理・テナント・ユーザー系の正規 REST API。
 //                            原則すべてここに寄せる (request() のデフォルト)。
-//   ME_BASE   = '/api/me'  … 「ログイン中ユーザー自身」のセッション一覧/失効。
-//                            サーバー側は /api/me/sessions のみで登録されており
-//                            (/api/v1/users/me/sessions は未実装)、ここだけは
-//                            勝手に /api/v1 へ移せない。移すにはサーバー側の
-//                            ルート追加 + nginx rewrite が必要 → バックログ。
+//                            「ログイン中ユーザー自身」のセッション一覧/失効も
+//                            /api/v1/users/me/sessions に統一済み (下記参照)。
+//   ME_BASE   = '/api/me'  … 【非推奨・後方互換のみ】かつてセッション系を置いた
+//                            prefix。Phase 4 時点ではサーバーが /api/me/sessions
+//                            のみ登録しており /api/v1 へ寄せられなかったが、
+//                            auth-proxy 側に GET/DELETE /api/v1/users/me/sessions
+//                            を追加したため、フロントは /api/v1 配下へ統一した。
+//                            旧 /api/me/sessions と /auth/sessions/{id} は
+//                            サーバー側に後方互換で残っている (削除はしない) が、
+//                            このフロントからはもう叩かない。
 //   /auth/...              … ForwardAuth / ログイン・ログアウト等の認証
 //                            アクション用。REST リソースではなく意味が異なる
 //                            ので /api/v1 とは別物として扱う。
@@ -17,7 +22,8 @@
 // nginx.conf 側は `location /api/` と `location /auth/` の 2 ブロックで
 // まとめて proxy しているので、上記 3 prefix はすべて同一 upstream に届く。
 const API_BASE = '/api/v1';
-const ME_BASE = '/api/me';
+// ME_BASE ('/api/me') は廃止。セッション系は API_BASE 配下 (/api/v1/users/me/...)
+// に統一した。サーバー側に後方互換ルートは残るが、フロントからは参照しない。
 
 async function request(path, options = {}) {
   return rawRequest(`${API_BASE}${path}`, options);
@@ -78,15 +84,15 @@ export const api = {
   // Sessions
   // listSessions は管理者向け (/api/v1/admin/sessions)。
   listSessions: (params) => paginated('/admin/sessions', params),
-  // mySessions / revokeSession は「自分自身」のセッションを ME_BASE (/api/me)
-  // で扱う。サーバー側 ( ApiRouter.java ) が /api/me/sessions (GET) と
-  // /api/me/sessions/{id} (DELETE) を登録しているのに合わせる。
-  // 以前は revokeSession だけ /auth/sessions/{id} を叩いていて prefix が
-  // バラバラだったが、サーバーは同一処理を /api/me/sessions/{id} でも提供
-  // しているので、list と同じ namespace に統一した (フロントのみで完結)。
-  // 生 fetch ではなく rawRequest を通すことで 401/非2xx のエラーハンドリングを共通化。
-  mySessions: () => rawRequest(`${ME_BASE}/sessions`).then(d => d.items || d),
-  revokeSession: (id) => rawRequest(`${ME_BASE}/sessions/${id}`, { method: 'DELETE' }),
+  // mySessions / revokeSession は「自分自身」のセッションを扱う。
+  // 統一先ルート: GET /api/v1/users/me/sessions (一覧) /
+  //               DELETE /api/v1/users/me/sessions/{id} (失効)。
+  // auth-proxy 側にこのルートを追加したため、管理系と同じ API_BASE (/api/v1)
+  // 配下に寄せた。旧 /api/me/sessions・/auth/sessions/{id} はサーバーに
+  // 後方互換で残るがフロントからは叩かない。
+  // request() 経由で API_BASE が自動付与され、401/非2xx のエラーハンドリングも共通化される。
+  mySessions: () => request('/users/me/sessions').then(d => d.items || d),
+  revokeSession: (id) => request(`/users/me/sessions/${id}`, { method: 'DELETE' }),
 
   // Audit
   listAudit: (params) => params ? paginated('/admin/audit', params) : items('/admin/audit'),
