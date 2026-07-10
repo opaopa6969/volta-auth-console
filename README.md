@@ -50,7 +50,7 @@ Authentication state is managed on the frontend as a tramli state machine (`auth
 | `/webhooks` | Webhooks | Webhook CRUD + delivery history |
 | `/keys` | SigningKeys | Signing key list, rotate |
 | `/settings` | Settings | Tenant-level settings |
-| `/monitor` | Monitor | tramli-viz real-time flow (blocker: tramli#37) |
+| `/monitor` | Monitor | tramli-viz real-time flow (SSE live feed + WS bridge, shipped) |
 
 ---
 
@@ -124,15 +124,14 @@ Called on app mount via `useAuthFlow()`. On success, syncs `ResumeUser` / `Resum
 
 ## API Boundaries
 
-The API client (`src/lib/api.js`) uses three path prefixes, all proxied to volta-auth-proxy:
+The API client (`src/lib/api.js`) issues every call under a single prefix, all proxied to volta-auth-proxy:
 
 | Prefix | Usage | Notes |
 |--------|-------|-------|
-| `/api/v1/` | Admin + tenant APIs | Main prefix for most endpoints |
-| `/api/me/` | User-self APIs | `mySessions` only — inconsistent prefix |
-| `/auth/` | Auth actions | `revokeSession` (DELETE) only |
+| `/api/v1/` | Admin, tenant, and user-self APIs | Sole prefix used by `api.js` (via `request()`). Self session list/revoke live at `/api/v1/users/me/sessions` |
+| `/auth/` | Auth actions (login / logout / ForwardAuth) | Proxy-level, redirect-based — not called by `api.js` |
 
-> **Known inconsistency**: `/api/me/` and `/auth/` are one-off deviations from `/api/v1/`. Tracked for cleanup — see [docs/architecture.md](docs/architecture.md#api-boundary-inconsistency).
+> **Unified**: the former `/api/me/` prefix (once used for `mySessions`) is retired — `api.js` drops `ME_BASE` and routes `mySessions` / `revokeSession` through `/api/v1/users/me/sessions`. The old `/api/me/sessions` and `/auth/sessions/{id}` routes remain server-side for backward compatibility only.
 
 ---
 
@@ -156,14 +155,9 @@ For production, use an environment variable or a named upstream block. See [docs
 
 `react-router-dom` and `zustand` are listed under `devDependencies` in `package.json`. Both are **runtime dependencies** and should be moved to `dependencies` before publishing or containerizing. They work in dev/build because Vite bundles everything, but the misclassification is a warning for downstream consumers.
 
-### Monitor page blockers
+### Monitor page — shipped
 
-The `/monitor` page requires two unresolved upstream items:
-
-- **tramli#37** — `@unlaxer/tramli-viz` not yet published to npm
-- **volta-auth-proxy#22** — WebSocket endpoint (`/viz/ws`) not yet implemented
-
-The page renders a "Coming Soon" fallback UI until both are resolved.
+The `/monitor` page is now in production. `@unlaxer/tramli-viz@^0.2.0` is a runtime dependency, `Monitor.jsx` sets `TRAMLI_VIZ_AVAILABLE = true`, and `VizDashboard` connects to the auth-proxy `/viz/ws` bridge, with an `/viz/auth/stream` SSE live feed running in parallel. The former blockers (`tramli#37` viz-unpublished, `volta-auth-proxy#22` WS-endpoint) are resolved.
 
 ---
 

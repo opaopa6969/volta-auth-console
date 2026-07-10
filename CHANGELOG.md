@@ -11,9 +11,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **AUTH-VIZ Phase 1/2 本番化**: `@unlaxer/tramli-viz@0.2.0` を dependency に追加し、Monitor ページの `TRAMLI_VIZ_AVAILABLE` を `true` に切替。`VizDashboard` を `wsUrl={wss://host/viz/ws}` で auth-proxy の WS bridge (AUTH-VIZ Phase 1) に接続し、5 SM の multi-layout + car pool + replay コントロールを実表示。既存 SSE live feed (`/viz/auth/stream`, SAAS-016) も並列で残し二重経路で運用。
 - **SAAS-016 + AUTH-VIZ Phase 2 frontend**: Monitor ページを preview から本番実装に。`EventSource` で `/viz/auth/stream` (SSE) を購読し、login/logout/MFA 系イベントをリアルタイム feed 表示。`/viz/flows` を起動時に fetch して各 flow の mermaid 定義を FlowCard に表示、SSE イベント種別から per-flow ライブカウントを加算。
 
+### Changed
+- **API prefix 統一**: `mySessions` / `revokeSession` を旧 `/api/me/`・`/auth/` から `/api/v1/users/me/sessions` に一本化。`api.js` の `ME_BASE` を廃止し、全リクエストを `API_BASE` (`/api/v1`) 経由に統一（サーバー側の旧ルートは後方互換で保持）。
+
 ### Planned
 - Move `react-router-dom` and `zustand` from `devDependencies` to `dependencies`
-- Unify API path prefixes (`/api/me/`, `/auth/` → `/api/v1/`)
 - Replace hardcoded nginx backend IP with environment-variable-driven upstream
 
 ---
