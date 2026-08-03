@@ -88,10 +88,10 @@
 | メソッド | エンドポイント | 用途 |
 |--------|------------|-----|
 | GET | `/api/v1/admin/sessions?page=&size=&user_id=` | ページネーション付きセッション一覧 |
-| GET | `/api/me/sessions` | 現在のユーザー自身のセッション |
-| DELETE | `/auth/sessions/:id` | セッション失効 |
+| GET | `/api/v1/users/me/sessions` | 現在のユーザー自身のセッション |
+| DELETE | `/api/v1/users/me/sessions/:id` | セッション失効 |
 
-> **API 非統一**: `/api/me/sessions` と `/auth/sessions/:id` は `/api/v1/` プレフィックスから逸脱 — 整理対象として追跡中。
+> 旧 `/api/me/sessions` と `/auth/sessions/:id` はサーバー側の後方互換用ルート。このフロントエンドは両方とも `/api/v1/users/me/sessions` を使う。
 
 ---
 
@@ -170,10 +170,4 @@
 
 **役割**: volta-auth-proxy で実行中の tramli 認証フローをリアルタイム可視化する。ADMIN/OWNER のみ。
 
-**ステータス**: ブロック中 — [docs/monitor-page-ja.md](monitor-page-ja.md) 参照。
-
-**ブロッカー**:
-- **tramli#37** — `@unlaxer/tramli-viz` が npm に未公開
-- **volta-auth-proxy#22** — WebSocket エンドポイントが未実装
-
-**フォールバック UI**: どちらかのブロッカーが未解決の場合、不足している依存関係と推定スケジュールを示すステータスパネルを表示する。
+**ステータス**: 実装済み。`/viz/auth/stream` の SSE フィードを表示し、`/viz/ws` 経由で `@unlaxer/tramli-viz` の `VizDashboard` を読み込む。

@@ -9,7 +9,7 @@
 - [Auth Flow (tramli)](#auth-flow-tramli)
 - [State Management](#state-management)
 - [API Layer](#api-layer)
-- [API Boundary Inconsistency](#api-boundary-inconsistency)
+- [API Boundary](#api-boundary)
 - [nginx.conf](#nginxconf)
 - [Component Map](#component-map)
 
@@ -158,19 +158,17 @@ Paginated response shape (from volta-auth-proxy v0.x):
 
 ---
 
-## API Boundary Inconsistency
+## API Boundary
 
-Three path prefixes are in use — this is a known tech debt:
+The frontend API client uses one REST prefix. Auth redirects and Monitor feeds are separate proxy-level endpoints:
 
 | Prefix | Endpoints | Issue |
 |--------|-----------|-------|
-| `/api/v1/` | All admin + tenant endpoints | Canonical — should be the only prefix |
-| `/api/me/` | `mySessions` only | Inconsistent — should be `/api/v1/users/me/sessions` |
-| `/auth/` | `revokeSession` (DELETE) only | Inconsistent — should be `/api/v1/sessions/:id` |
+| `/api/v1/` | Admin, tenant, and user-self APIs | Sole prefix used by `src/lib/api.js`; self sessions use `/api/v1/users/me/sessions` |
+| `/auth/` | Login/logout and other auth redirects | Proxy-level; not called by `src/lib/api.js` |
+| `/viz/` | Monitor SSE, flow definitions, and WebSocket | Used directly by `Monitor.jsx` |
 
-Root cause: `mySessions` and `revokeSession` were added at different times before an API versioning policy was established.
-
-**Remediation plan**: Align under `/api/v1/` when volta-auth-proxy stabilises its routing. Track in `api.js` with `// TODO: unify prefix` comments.
+The old `/api/me/sessions` and `/auth/sessions/{id}` routes may remain server-side for backward compatibility, but this frontend does not call them.
 
 ---
 

@@ -168,6 +168,6 @@ The `/monitor` page is now in production. `@unlaxer/tramli-viz@^0.2.0` is a runt
 | [docs/architecture.md](docs/architecture.md) | System architecture, auth flow, nginx, API boundaries |
 | [docs/getting-started.md](docs/getting-started.md) | Dev environment setup, proxy connection |
 | [docs/pages.md](docs/pages.md) | Per-page role and API mapping |
-| [docs/monitor-page.md](docs/monitor-page.md) | Monitor page design and blockers |
+| [docs/monitor-page.md](docs/monitor-page.md) | Monitor page design and connection behaviour |
 | [docs/decisions/](docs/decisions/) | Architecture decision records |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |

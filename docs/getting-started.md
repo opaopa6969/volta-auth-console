@@ -80,7 +80,7 @@ See [docs/architecture.md#nginxconf](architecture.md#nginxconf) for the recommen
 On mount, the app runs the `sessionResumeDefinition` tramli flow:
 
 ```
-CHECKING → api.me() + api.myTenants() (parallel)
+CHECKING → `SessionResumeGuard` → api.me() + api.myTenants() (parallel)
   ├── 200 OK  → AUTHENTICATED — renders the SPA
   └── 401     → NO_SESSION    — redirects to /login?return_to=<current-path>
 ```
@@ -91,7 +91,7 @@ No manual token management is needed. Sessions are cookie-based; volta-auth-prox
 
 ## 6. Role-based access
 
-The Sidebar renders the **Monitor** link only for `ADMIN` or `OWNER` roles. Other pages check role in the page component itself. Roles come from the `user` object in zustand `authStore` (populated from `api.me()` response).
+The Sidebar renders the **Monitor** link only for `ADMIN` or `OWNER` roles. Other pages check role in the page component itself. Roles come from the `user` object in zustand `authStore`, populated by `useAuthFlow` after the session-resume flow completes.
 
 ---
 
@@ -102,4 +102,4 @@ The Sidebar renders the **Monitor** link only for `ADMIN` or `OWNER` roles. Othe
 | Blank screen, no redirect | volta-auth-proxy unreachable | Check proxy target in vite.config.js |
 | `431 Request Header Fields Too Large` | Missing `NODE_OPTIONS` | Use `npm run dev` (not `vite` directly) |
 | Auth loop (redirect → login → redirect) | Cookie domain mismatch | Ensure dev server and proxy are on same origin |
-| Monitor page shows "Coming Soon" | tramli#37 or volta-auth-proxy#22 unresolved | Expected — see [docs/monitor-page.md](monitor-page.md) |
+| Monitor page has no live events | volta-auth-proxy `/viz/auth/stream` is unavailable | Check the proxy and auth-proxy logs; the page remains usable without events |

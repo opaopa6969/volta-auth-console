@@ -124,15 +124,14 @@ CHECKING → AUTHENTICATED（終端）
 
 ## API 境界
 
-API クライアント (`src/lib/api.js`) は 3 つのパスプレフィックスを使用し、すべて volta-auth-proxy にプロキシされる:
+API クライアント (`src/lib/api.js`) は `/api/v1/` を単一のプレフィックスとして使用し、volta-auth-proxy にプロキシされる:
 
 | プレフィックス | 用途 | 備考 |
 |--------------|------|------|
-| `/api/v1/` | 管理・テナント API | 大半のエンドポイントで使用するメインプレフィックス |
-| `/api/me/` | ユーザー自身用 API | `mySessions` のみ — 非統一 |
-| `/auth/` | 認証アクション | `revokeSession`（DELETE）のみ |
+| `/api/v1/` | 管理・テナント・ユーザー自身用 API | `api.js` が使う唯一のプレフィックス。自分のセッション一覧/失効は `/api/v1/users/me/sessions` |
+| `/auth/` | 認証アクション | ログイン・ログアウト等のプロキシレベルのリダイレクト。`api.js` からは呼ばない |
 
-> **既知の非統一**: `/api/me/` と `/auth/` は `/api/v1/` から逸脱した例外。整理が必要 — [docs/architecture-ja.md](docs/architecture-ja.md#api-境界の非統一) 参照。
+> **統一済み**: 旧 `/api/me/` と `/auth/sessions/{id}` はサーバー側の後方互換用に残るが、このフロントエンドからは呼ばない。
 
 ---
 
@@ -156,14 +155,7 @@ proxy_pass http://192.168.1.13:7070;   # ← 実際のホストに変更
 
 `react-router-dom` と `zustand` が `package.json` の `devDependencies` に記載されている。両方とも**ランタイム依存関係**であり、公開またはコンテナ化する前に `dependencies` へ移動すること。Vite がすべてバンドルするため開発・ビルドでは動作するが、ダウンストリームの利用者に対して誤解を招く。
 
-### Monitor ページのブロッカー
-
-`/monitor` ページには未解決の上流タスクが 2 つある:
-
-- **tramli#37** — `@unlaxer/tramli-viz` が npm に未公開
-- **volta-auth-proxy#22** — WebSocket エンドポイント（`/viz/ws`）が未実装
-
-両方が解決されるまで "Coming Soon" フォールバック UI を表示する。
+Monitor は実装済みで、`/viz/auth/stream` の SSE フィードと `/viz/ws` の VizDashboard を表示する。接続できない場合も画面自体は表示され、SSE はエラー状態として扱う。
 
 ---
 

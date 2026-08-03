@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@unlaxer/dxe-suite": "file:../DxE-suite",
+    "@unlaxer/dxe-suite": "file:../../DxE-suite",
     "@unlaxer/tramli": "^3.6.1",
     "@unlaxer/tramli-react": "^0.2.0",
     "@unlaxer/tramli-viz": "^0.2.0",

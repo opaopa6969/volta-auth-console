@@ -88,10 +88,10 @@ Each of the 12 pages, its role, and the API endpoints it calls.
 | Method | Endpoint | Usage |
 |--------|----------|-------|
 | GET | `/api/v1/admin/sessions?page=&size=&user_id=` | Paginated session list |
-| GET | `/api/me/sessions` | Current user's own sessions |
-| DELETE | `/auth/sessions/:id` | Revoke a session |
+| GET | `/api/v1/users/me/sessions` | Current user's own sessions |
+| DELETE | `/api/v1/users/me/sessions/:id` | Revoke a session |
 
-> **API inconsistency**: `/api/me/sessions` and `/auth/sessions/:id` deviate from the `/api/v1/` prefix — tracked for cleanup.
+> The former `/api/me/sessions` and `/auth/sessions/:id` routes are server-side backward-compatible routes only; this frontend uses `/api/v1/users/me/sessions` for both operations.
 
 ---
 
@@ -170,10 +170,4 @@ Each of the 12 pages, its role, and the API endpoints it calls.
 
 **Role**: Real-time visualization of tramli auth flows running in volta-auth-proxy. ADMIN/OWNER only.
 
-**Status**: Blocked — see [docs/monitor-page.md](monitor-page.md).
-
-**Blockers**:
-- **tramli#37** — `@unlaxer/tramli-viz` not yet published
-- **volta-auth-proxy#22** — WebSocket endpoint not yet implemented
-
-**Fallback UI**: When either blocker is unresolved, the page shows a status panel listing the missing dependencies and an estimated timeline.
+**Status**: Shipped. The page shows the `/viz/auth/stream` SSE feed and loads `VizDashboard` from `@unlaxer/tramli-viz` over `/viz/ws`.

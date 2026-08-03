@@ -10,31 +10,22 @@ Real-time auth flow visualization powered by tramli-viz.
 
 The `/monitor` page shows live tramli flow state transitions happening inside volta-auth-proxy — session flows, OIDC flows, passkey flows, MFA flows, and invite flows — rendered as animated state diagrams.
 
-**Current status: blocked.** The page skeleton is implemented; the live UI requires two unresolved upstream items.
+**Current status: shipped.** The page loads `@unlaxer/tramli-viz@^0.2.0`, connects `VizDashboard` to `/viz/ws`, and subscribes to `/viz/auth/stream` for live events.
 
 ---
 
-## Blockers
+## Current connection behaviour
 
-### tramli#37 — `@unlaxer/tramli-viz` not published
+`EventSource` subscribes to `/viz/auth/stream` and `GET /viz/flows` loads the flow definitions. If either endpoint is unavailable, the page remains visible with a disconnected/error status and no live events.
 
-`@unlaxer/tramli-viz` is the React component library that renders tramli flow diagrams. It is not yet published to npm.
+### WebSocket bridge
 
-- The package is referenced in the Monitor page via a dynamic import with a try/catch fallback.
-- Until published, the page renders the fallback UI.
-- Tracking: [tramli issue #37](https://github.com/opaopa6969/tramli/issues/37)
+The Monitor page connects to `wss://${window.location.host}/viz/ws` to receive real-time flow events from the auth-proxy bridge.
 
-### volta-auth-proxy#22 — WebSocket endpoint not implemented
-
-The Monitor page connects to `wss://${window.location.host}/viz/ws` to receive real-time flow events. This endpoint does not yet exist in volta-auth-proxy.
-
-- Tracking: [volta-auth-proxy issue #22](https://github.com/opaopa6969/volta-auth-proxy/issues/22)
 
 ---
 
 ## Design
-
-### When both blockers are resolved
 
 ```jsx
 import { VizDashboard } from '@unlaxer/tramli-viz';
@@ -47,31 +38,29 @@ import { VizDashboard } from '@unlaxer/tramli-viz';
 />
 ```
 
-### Fallback UI (current behaviour)
+### Visualization
 
-When `@unlaxer/tramli-viz` is unavailable or the WebSocket fails to connect:
+The dashboard is loaded lazily with `layout="layered"`, `theme="dark"`, metrics, car-pool, and replay controls. Connection state is handled by the dashboard.
 
 ```
 ┌─────────────────────────────────────────────┐
 │  Monitor — Real-time Auth Flow Visualization │
 │                                              │
-│  ⏳ Coming Soon                              │
+│  ● disconnected / error                     │
 │                                              │
-│  Dependencies:                               │
-│  ✗ @unlaxer/tramli-viz   (tramli#37)        │
-│  ✗ /viz/ws WebSocket     (auth-proxy#22)    │
+│  Live feed unavailable / disconnected        │
 └─────────────────────────────────────────────┘
 ```
 
 ### Access control
 
-The Monitor link in the Sidebar is shown only to users with `role === 'ADMIN'` or `role === 'OWNER'`. Other roles can navigate directly to `/monitor` but see the same fallback UI.
+The Monitor link in the Sidebar is shown only to users with `role === 'ADMIN'` or `role === 'OWNER'`. Other roles can navigate directly to `/monitor`; the route itself does not add a separate role guard.
 
 ---
 
 ## WebSocket protocol
 
-Expected message format from volta-auth-proxy once `#22` is implemented:
+The WebSocket bridge supplies the protocol consumed by `tramli-viz`.
 
 ```json
 {
@@ -94,13 +83,9 @@ tramli-viz subscribes to this stream and updates the diagram in real time.
 Key logic:
 
 ```js
-let VizDashboard = null;
-try {
-  const mod = await import('@unlaxer/tramli-viz');
-  VizDashboard = mod.VizDashboard;
-} catch {
-  // tramli#37: package not yet published — show fallback
-}
+const VizDashboardLazy = lazy(() =>
+  import('@unlaxer/tramli-viz').then(m => ({ default: m.VizDashboard }))
+);
 ```
 
-The fallback is rendered when `VizDashboard === null` or when the WebSocket connection fails on open.
+SSE failures update the status indicator rather than switching to a Coming Soon screen.

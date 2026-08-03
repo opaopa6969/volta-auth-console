@@ -190,8 +190,8 @@ useAuthStore {
 | POST | `/api/v1/tenants/:tid/invitations` | 招待作成 |
 | DELETE | `/api/v1/tenants/:tid/invitations/:iid` | 招待削除 |
 | GET | `/api/v1/admin/sessions[?params]` | セッション一覧 (管理) |
-| GET | `/api/me/sessions` | 自分のセッション一覧 (**注意: `/api/me/` プレフィックス**) |
-| DELETE | `/auth/sessions/:id` | セッション失効 (**注意: `/auth/` プレフィックス**) |
+| GET | `/api/v1/users/me/sessions` | 自分のセッション一覧 |
+| DELETE | `/api/v1/users/me/sessions/:id` | セッション失効 |
 | GET | `/api/v1/admin/audit[?params]` | 監査ログ (管理) |
 | GET | `/api/v1/tenants/:tid/idp-configs` | IdP 設定一覧 |
 | GET | `/api/v1/tenants/:tid/webhooks` | Webhook 一覧 |
@@ -390,17 +390,15 @@ Promise.all([
 
 ## 6. API / 外部境界
 
-### 6.1 プレフィックス混在
+### 6.1 API プレフィックス
 
 | プレフィックス | 用途 | 例 |
 |--------------|------|-----|
 | `/api/v1/` | 主要管理 API | `/api/v1/admin/users` |
-| `/api/me/` | ユーザー自身リソース | `/api/me/sessions` |
-| `/auth/` | 認証操作 | `/auth/sessions/:id` (DELETE) |
+| `/auth/` | 認証操作（リダイレクト） | `api.js` からは呼ばない |
 | `/viz/` | Monitor ページ専用 | `/viz/auth/stream` (SSE), `/viz/flows`, `/viz/ws` (WS) |
 
-`/api/me/sessions` と `/auth/sessions/:id` は `api.js` の共通 `request()` を
-使用せず直接 `fetch()` を呼んでいる。これは API 境界の非統一を意味する。
+旧 `/api/me/sessions` と `/auth/sessions/:id` はサーバー側の後方互換用に残る場合があるが、`api.js` は `/api/v1/users/me/sessions` に統一している。
 
 ### 6.2 Vite dev proxy
 
@@ -593,13 +591,11 @@ audit ログが大量にある場合、`listAudit()` のレスポンスが特に
 **推奨**: バックエンドに `/api/v1/admin/stats` 等の集計 API を追加し、
 Dashboard は集計値のみを取得する設計に変更する。
 
-### 10.2 API 境界の非統一
+### 10.2 API 境界
 
-3 種類のプレフィックス (`/api/v1/`, `/api/me/`, `/auth/`) が混在しており、
-`api.js` の共通 `request()` ラッパーを通さない直接 `fetch()` 呼び出しが
-`Sessions.jsx` (mySessions, revokeSession) と `Settings.jsx` に存在する。
-
-**推奨**: `api.js` にすべての API 呼び出しを集約し、`request()` ラッパーを通す。
+`api.js` の REST API は `/api/v1/` に統一されている。旧 `/api/me/sessions` と
+`/auth/sessions/:id` はサーバー側の後方互換用ルートであり、フロントエンドは呼ばない。
+Monitor の `/viz/` と認証リダイレクトの `/auth/` は REST API とは別のプロキシ境界である。
 
 ### 10.3 nginx の /viz/ 未定義
 
@@ -1194,7 +1190,7 @@ confirm ダイアログには "Active JWTs will still be valid until expiry." �
 - TOTP 無効時または MFA 管理 URI: `/settings/security` (volta-auth-proxy のセキュリティ設定ページ)
 
 **Sessions セクション**:
-- `api.mySessions()` → `GET /api/me/sessions` → セッション一覧
+- `api.mySessions()` → `GET /api/v1/users/me/sessions` → セッション一覧
 - セッション失効後は `setSessions(s => s.filter(x => x.id !== session.id))` でローカル更新
   (再 fetch しない)
 
@@ -1379,7 +1375,7 @@ Monitor ページの SSE ペイロードも JSX でレンダリングされる�
 | 高 | Dashboard 全件 fetch | `/api/v1/admin/stats` 集計 API 追加 |
 | 高 | react-router-dom / zustand の devDeps 誤配置 | `dependencies` に移動 |
 | 中 | nginx の /viz/ 未定義 | ロケーション追加 |
-| 中 | API 境界の非統一 | `api.js` に `mySessions`, `revokeSession`, MFA 関連を統合 |
+| 中 | API 境界の整理 | `/viz/` の本番 proxy 設定を確認 |
 | 中 | confirm/alert/prompt 使用 | カスタムモーダルダイアログに置き換え |
 | 低 | Sidebar バージョン文字列の手動管理 | package.json から動的に読み込む |
 | 低 | Audit の二重 setFilters | `handleEventChange` から `pq.setFilters` 呼び出しを削除 |

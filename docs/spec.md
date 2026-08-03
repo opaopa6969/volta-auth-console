@@ -5,7 +5,7 @@
 ### 背景
 - `src/store/authFlowDefinition.js` に tramli FlowDefinition が既に定義済み
 - `@unlaxer/tramli-react` の `useFlow` hook がインストール済み
-- しかし authStore.js は tramli を使わず独自に `api.me()` + `api.myTenants()` で認証チェックしている
+- `useAuthFlow.js` が tramli の session-resume フローを起動し、完了時に `authStore` へ認証情報を同期する
 
 ### 変更内容
 
@@ -20,7 +20,7 @@ useAuthFlow() → { authState, user, tenants, error, isLoading, resume }
 ```
 
 #### 2. `src/store/authStore.js` — リファクタ
-- `init()` を tramli `sessionResumeDefinition` ベースに変更
+- `useAuthFlow()` が tramli `sessionResumeDefinition` を起動する。`authStore.init()` は旧来の直接 API 呼び出しを fallback として残す
 - フローの AUTHENTICATED/NO_SESSION terminal state で authenticated フラグを更新
 - 後方互換: `user`, `tenants`, `authenticated`, `loading` は同じインターフェース
 
@@ -37,15 +37,15 @@ useAuthFlow() → { authState, user, tenants, error, isLoading, resume }
 ## Issue #2: /monitor page — リアルタイム認証フロー可視化
 
 ### 背景
-- `@unlaxer/tramli-viz` はまだ npm 未公開 (tramli#37 待ち)
-- `volta-auth-proxy#22` の WebSocket エンドポイントも未完了
-- ページの骨組みとフォールバック UI を先行実装
+- `@unlaxer/tramli-viz@^0.2.0` は公開済み
+- `volta-auth-proxy` の `/viz/ws` bridge と `/viz/auth/stream` を利用する
+- ページは VizDashboard と SSE ライブフィードを実装済み
 
 ### 変更内容
 
 #### 1. `src/pages/Monitor.jsx` — 新規作成
 - `@unlaxer/tramli-viz` が利用可能な場合: `VizDashboard` をレンダリング
-- 利用不可の場合: 依存関係のステータスと Coming Soon UI を表示
+- 常に `VizDashboard` を lazy import し、SSE のライブフィードとともに表示
 - WebSocket URL: `wss://${window.location.host}/viz/ws`
 - 表示フロー: session, oidc, passkey, mfa, invite
 - レイアウト: layered, テーマ: dark
@@ -57,7 +57,7 @@ useAuthFlow() → { authState, user, tenants, error, isLoading, resume }
 #### 3. `src/App.jsx` — 変更
 - `<Route path="/monitor" element={<Monitor />} />` 追加
 
-### API 変更: なし (WebSocket は auth-proxy#22 で提供予定)
+### API 変更: なし（`/viz/ws` bridge と `/viz/auth/stream` は auth-proxy が提供）
 
 ---
 

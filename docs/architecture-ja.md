@@ -9,7 +9,7 @@
 - [認証フロー (tramli)](#認証フロー-tramli)
 - [状態管理](#状態管理)
 - [API レイヤー](#api-レイヤー)
-- [API 境界の非統一](#api-境界の非統一)
+- [API 境界](#api-境界)
 - [nginx.conf](#nginxconf)
 - [コンポーネントマップ](#コンポーネントマップ)
 
@@ -158,19 +158,17 @@ function paginated(path, params = {}) {
 
 ---
 
-## API 境界の非統一
+## API 境界
 
-現在 3 つのパスプレフィックスが混在している — 既知の技術的負債:
+フロントエンドの API クライアントは REST プレフィックスを 1 つだけ使う。認証リダイレクトと Monitor のフィードはプロキシレベルの別エンドポイントである:
 
 | プレフィックス | エンドポイント | 問題 |
 |--------------|-------------|------|
-| `/api/v1/` | すべての管理・テナント API | 正規 — 唯一のプレフィックスにすべき |
-| `/api/me/` | `mySessions` のみ | 非統一 — `/api/v1/users/me/sessions` に変更すべき |
-| `/auth/` | `revokeSession`（DELETE）のみ | 非統一 — `/api/v1/sessions/:id` に変更すべき |
+| `/api/v1/` | 管理・テナント・ユーザー自身用 API | `src/lib/api.js` が使う唯一のプレフィックス。自分のセッションは `/api/v1/users/me/sessions` |
+| `/auth/` | ログイン・ログアウト等の認証リダイレクト | プロキシレベル。`src/lib/api.js` からは呼ばない |
+| `/viz/` | Monitor の SSE・フロー定義・WebSocket | `Monitor.jsx` が直接使用 |
 
-**根本原因**: `mySessions` と `revokeSession` が API バージョニングポリシー確立前に別々のタイミングで追加された。
-
-**修正計画**: volta-auth-proxy のルーティングが安定したタイミングで `/api/v1/` に統一する。`api.js` 内に `// TODO: unify prefix` コメントを残して追跡。
+旧 `/api/me/sessions` と `/auth/sessions/{id}` はサーバー側に後方互換用として残る場合があるが、このフロントエンドからは呼ばない。
 
 ---
 
