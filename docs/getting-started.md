@@ -53,7 +53,7 @@ If volta-auth-proxy runs on a different host/port, update the proxy target accor
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). If volta-auth-proxy is reachable, you will be redirected to the login page; after authenticating you land on the Dashboard.
+Open [http://localhost:3400](http://localhost:3400). If volta-auth-proxy is reachable, you will be redirected to the login page; after authenticating you land on the Dashboard.
 
 ---
 
@@ -91,7 +91,7 @@ No manual token management is needed. Sessions are cookie-based; volta-auth-prox
 
 ## 6. Role-based access
 
-The Sidebar renders the **Monitor** link only for `ADMIN` or `OWNER` roles. Other pages check role in the page component itself. Roles come from the `user` object in zustand `authStore` (populated from `api.me()` response).
+The Sidebar renders the **Monitor** link only for `ADMIN` or `OWNER` roles. Roles come from the `user` object in zustand `authStore` (populated from the session-resume flow).
 
 ---
 
@@ -102,4 +102,4 @@ The Sidebar renders the **Monitor** link only for `ADMIN` or `OWNER` roles. Othe
 | Blank screen, no redirect | volta-auth-proxy unreachable | Check proxy target in vite.config.js |
 | `431 Request Header Fields Too Large` | Missing `NODE_OPTIONS` | Use `npm run dev` (not `vite` directly) |
 | Auth loop (redirect → login → redirect) | Cookie domain mismatch | Ensure dev server and proxy are on same origin |
-| Monitor page shows "Coming Soon" | tramli#37 or volta-auth-proxy#22 unresolved | Expected — see [docs/monitor-page.md](monitor-page.md) |
+| Monitor page has no live data | `/viz/auth/stream`, `/viz/flows`, or `/viz/ws` unavailable | Check the volta-auth-proxy monitor endpoints — see [docs/monitor-page.md](monitor-page.md) |

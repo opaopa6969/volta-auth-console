@@ -50,7 +50,7 @@ Authentication state is managed on the frontend as a tramli state machine (`auth
 | `/webhooks` | Webhooks | Webhook CRUD + delivery history |
 | `/keys` | SigningKeys | Signing key list, rotate |
 | `/settings` | Settings | Tenant-level settings |
-| `/monitor` | Monitor | tramli-viz real-time flow (blocker: tramli#37) |
+| `/monitor` | Monitor | tramli-viz real-time flow (SSE + WebSocket) |
 
 ---
 
@@ -62,7 +62,7 @@ npm install
 
 # 2. Start dev server (large header size required for auth cookies)
 npm run dev
-# → http://localhost:5173
+# → http://localhost:3400
 
 # 3. Build
 npm run build
@@ -129,10 +129,10 @@ The API client (`src/lib/api.js`) uses three path prefixes, all proxied to volta
 | Prefix | Usage | Notes |
 |--------|-------|-------|
 | `/api/v1/` | Admin + tenant APIs | Main prefix for most endpoints |
-| `/api/me/` | User-self APIs | `mySessions` only — inconsistent prefix |
-| `/auth/` | Auth actions | `revokeSession` (DELETE) only |
+| `/api/v1/` | User-self APIs | `mySessions` and `revokeSession` are under this prefix |
+| `/auth/` | Auth actions | Login/forward-auth actions only |
 
-> **Known inconsistency**: `/api/me/` and `/auth/` are one-off deviations from `/api/v1/`. Tracked for cleanup — see [docs/architecture.md](docs/architecture.md#api-boundary-inconsistency).
+Session list/revoke endpoints were unified under `/api/v1/users/me/sessions` in the current implementation. The legacy `/api/me/sessions` and `/auth/sessions/:id` routes remain backend compatibility routes and are not called by this SPA.
 
 ---
 
@@ -156,14 +156,11 @@ For production, use an environment variable or a named upstream block. See [docs
 
 `react-router-dom` and `zustand` are listed under `devDependencies` in `package.json`. Both are **runtime dependencies** and should be moved to `dependencies` before publishing or containerizing. They work in dev/build because Vite bundles everything, but the misclassification is a warning for downstream consumers.
 
-### Monitor page blockers
+### Monitor page
 
-The `/monitor` page requires two unresolved upstream items:
-
-- **tramli#37** — `@unlaxer/tramli-viz` not yet published to npm
-- **volta-auth-proxy#22** — WebSocket endpoint (`/viz/ws`) not yet implemented
-
-The page renders a "Coming Soon" fallback UI until both are resolved.
+The `/monitor` page uses the published `@unlaxer/tramli-viz@0.2.0` package and connects to
+`/viz/ws` for flow telemetry. It also consumes the `/viz/auth/stream` SSE feed and
+`/viz/flows` definitions.
 
 ---
 
