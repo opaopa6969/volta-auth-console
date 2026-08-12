@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import packageJson from '../../package.json';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: '📊' },
@@ -39,7 +40,7 @@ export default function Sidebar({ user }) {
         ))}
       </nav>
       <div className="p-4 border-t border-gray-800 text-xs text-gray-600">
-        volta-auth-console v0.2.0
+        volta-auth-console v{packageJson.version}
       </div>
     </aside>
   );
