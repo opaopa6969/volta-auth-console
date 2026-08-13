@@ -111,11 +111,49 @@ function MonitorView() {
   }, []);
 
   // Subscribe to SSE
+  //
+  // #28: 以前は EventSource を1回張るだけで、切れたら status を 'error' にして
+  // 終わりだった。EventSource 自身の自動再接続はサーバーが 5xx や接続断を返すと
+  // 止まることがあり、**画面は開いたまま、イベントだけ来ない**状態になる。
+  // 表示上は 'error' でも、リロードするまで復帰しない。
+  // 明示的に指数バックオフで張り直す。
   useEffect(() => {
     if (typeof EventSource === 'undefined') return;
-    const es = new EventSource(SSE_PATH, { withCredentials: true });
-    es.onopen = () => setStatus('connected');
-    es.onerror = () => setStatus('error');
+
+    let es = null;
+    let retryTimer = null;
+    let attempt = 0;
+    let closed = false;
+
+    const RETRY_BASE_MS = 1000;
+    const RETRY_MAX_MS = 30_000;
+
+    const scheduleReconnect = () => {
+      if (closed) return;
+      // 1s, 2s, 4s, 8s, 16s, 30s, 30s … 端末とサーバーの両方を守るため上限を置く。
+      const delay = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS);
+      attempt += 1;
+      setStatus(`reconnecting in ${Math.round(delay / 1000)}s`);
+      retryTimer = setTimeout(connect, delay);
+    };
+
+    function connect() {
+      if (closed) return;
+      es = new EventSource(SSE_PATH, { withCredentials: true });
+      es.onopen = () => {
+        attempt = 0; // 繋がったらバックオフを畳む
+        setStatus('connected');
+      };
+      es.onerror = () => {
+        setStatus('error');
+        // 張り直すのはこちらで制御する。EventSource 任せにすると、
+        // 再接続を諦めた状態と区別が付かない。
+        es?.close();
+        scheduleReconnect();
+      };
+      es.addEventListener('auth-event', handleEvent);
+      es.addEventListener('connected', () => setStatus('connected'));
+    }
 
     const handleEvent = (ev) => {
       let payload;
@@ -143,12 +181,13 @@ function MonitorView() {
       });
     };
 
-    es.addEventListener('auth-event', handleEvent);
-    es.addEventListener('connected', () => setStatus('connected'));
+    connect();
 
     return () => {
-      es.removeEventListener('auth-event', handleEvent);
-      es.close();
+      closed = true;
+      clearTimeout(retryTimer);
+      es?.removeEventListener('auth-event', handleEvent);
+      es?.close();
     };
   }, []);
 

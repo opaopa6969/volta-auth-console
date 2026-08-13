@@ -14,8 +14,8 @@ const columns = [
 ];
 
 export default function Members() {
-  const user = useAuthStore(s => s.user);
-  const tenantId = user?.tenantId;
+  // #26: 選択中テナント（未選択なら user.tenantId → 所属先頭）
+  const tenantId = useAuthStore(s => s.currentTenantId());
 
   const fetchMembers = useCallback((params) => {
     if (!tenantId) return Promise.resolve({ items: [], total: 0, page: 1, size: 20, pages: 0 });

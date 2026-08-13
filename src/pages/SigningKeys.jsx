@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import DataTable from '../components/DataTable';
+import { useConfirm } from '../lib/dialogContext';
 
 const columns = [
   { key: 'kid', label: 'Key ID', render: (v) => <span className="font-mono text-xs">{v}</span> },
@@ -13,6 +14,7 @@ const columns = [
 ];
 
 export default function SigningKeys() {
+  const confirm = useConfirm();
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export default function SigningKeys() {
   useEffect(refresh, []);
 
   const handleRotate = async () => {
-    if (!confirm('Rotate signing key? Active JWTs will still be valid until expiry.')) return;
+    if (!await confirm({ message: 'Rotate signing key? Active JWTs will still be valid until expiry.', danger: true })) return;
     await api.rotateKeys();
     refresh();
   };

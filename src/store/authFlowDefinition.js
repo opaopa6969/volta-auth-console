@@ -96,7 +96,7 @@ const callbackGuard = {
   requires: [LoginRedirect],
   produces: [IdpCallback],
   maxRetries: 1,
-  validate(ctx) {
+  validate() {
     // URL にコールバックパラメータがあるか検証
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
@@ -111,27 +111,10 @@ const callbackGuard = {
   },
 };
 
-const sessionCheckGuard = {
-  name: 'SessionCheckGuard',
-  requires: [],
-  produces: [IdpCallback, ResolvedUser],
-  maxRetries: 1,
-  async validate() {
-    // Cookie ベースセッションが有効ならスキップして直接解決
-    try {
-      const user = await api.me();
-      return {
-        type: 'accepted',
-        data: Tramli.data(
-          [IdpCallback, { code: 'session', state: 'existing' }],
-          [ResolvedUser, user],
-        ),
-      };
-    } catch {
-      return { type: 'rejected', reason: 'No active session' };
-    }
-  },
-};
+// SessionCheckGuard は削除した（#15）。
+// Cookie セッションによる「OIDC を経由しない再開」は下の sessionResumeDefinition の
+// SessionResumeGuard が担っており、こちらは authFlowDefinition のどの遷移にも
+// 結線されないまま残っていた。2つあると「どちらが実際に走るのか」が読めない。
 
 const mfaGuard = {
   name: 'MfaVerifyGuard',

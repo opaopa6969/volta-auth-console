@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
+import { useConfirm, useToast } from '../lib/dialogContext';
 
 export default function Settings() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const user = useAuthStore(s => s.user);
   const [displayName, setDisplayName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -12,10 +15,9 @@ export default function Settings() {
   useEffect(() => {
     if (user) setDisplayName(user.displayName || '');
     api.me().then(u => setDisplayName(u.displayName || u.display_name || '')).catch(() => {});
-    fetch('/api/v1/users/me/mfa', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(setMfaStatus)
-      .catch(() => {});
+    // #14: 直接 fetch していたため、prefix 規約 (api.js 冒頭のコメント) と
+    // 401 のグローバル処理 (#24) をどちらもすり抜けていた。
+    api.myMfa().then(setMfaStatus).catch(() => {});
     api.mySessions().then(setSessions).catch(() => {});
   }, [user]);
 
@@ -24,26 +26,21 @@ export default function Settings() {
     if (!user) return;
     setSaving(true);
     try {
-      await fetch(`/api/v1/users/${user.userId || user.id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_name: displayName }),
-      });
+      await api.updateUser(user.userId || user.id, { display_name: displayName });
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleRevoke = async (session) => {
-    if (!confirm(`Revoke session from ${session.ip || session.ipAddress || 'unknown'}?`)) return;
+    if (!await confirm({ message: `Revoke session from ${session.ip || session.ipAddress || 'unknown'}?`, danger: true })) return;
     try {
       await api.revokeSession(session.id);
       setSessions(s => s.filter(x => x.id !== session.id));
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import DataTable from '../components/DataTable';
+import { useConfirm, useToast } from '../lib/dialogContext';
 
 export default function Webhooks() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [webhooks, setWebhooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -12,8 +15,8 @@ export default function Webhooks() {
   const [saving, setSaving] = useState(false);
   const [deliveries, setDeliveries] = useState({});
   const [expandedId, setExpandedId] = useState(null);
-  const user = useAuthStore(s => s.user);
-  const tid = user?.tenantId;
+  // #26: 選択中テナント（未選択なら user.tenantId → 所属先頭）
+  const tid = useAuthStore(s => s.currentTenantId());
 
   const refresh = () => {
     if (!tid) return;
@@ -38,7 +41,7 @@ export default function Webhooks() {
       setForm({ endpoint_url: '', events: '' });
       refresh();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }
@@ -51,7 +54,7 @@ export default function Webhooks() {
   };
 
   const handleDelete = async (wh) => {
-    if (!confirm(`Delete webhook ${wh.endpointUrl || wh.url}?`)) return;
+    if (!await confirm({ message: `Delete webhook ${wh.endpointUrl || wh.url}?`, danger: true })) return;
     await api.deleteWebhook(tid, wh.id);
     refresh();
   };

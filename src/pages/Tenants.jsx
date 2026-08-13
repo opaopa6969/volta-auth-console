@@ -1,21 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import DataTable from '../components/DataTable';
+import { useConfirm, useToast } from '../lib/dialogContext';
 
 export default function Tenants() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const refresh = () => {
-    setLoading(true);
-    api.adminTenants().then(setTenants).catch(() => setTenants([])).finally(() => setLoading(false));
-  };
+  // setLoading(true) を関数の頭に置くと、effect から呼んだときに「effect 本体で
+  // 同期的に setState」になり cascading render を招く（react-hooks の
+  // set-state-in-effect）。loading の初期値を true にして、ここでは通信後にだけ
+  // 状態を更新する。
+  const refresh = useCallback(async () => {
+    try {
+      setTenants(await api.adminTenants());
+    } catch {
+      setTenants([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(refresh, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
   const handleToggle = async (tenant) => {
     const action = tenant.suspended ? 'activate' : 'suspend';
-    if (!confirm(`${action} tenant "${tenant.name}"?`)) return;
+    if (!await confirm({ message: `${action} tenant "${tenant.name}"?`, danger: true })) return;
     try {
       if (tenant.suspended) {
         await api.activateTenant(tenant.id);
@@ -24,7 +36,7 @@ export default function Tenants() {
       }
       refresh();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -33,7 +45,7 @@ export default function Tenants() {
     const msg = newValue
       ? `Enable MFA requirement for "${tenant.name}"? Members will have 7 days to set up MFA.`
       : `Disable MFA requirement for "${tenant.name}"?`;
-    if (!confirm(msg)) return;
+    if (!await confirm({ message: msg, danger: true })) return;
     try {
       await api.updateTenant(tenant.id, {
         mfa_required: newValue,
@@ -41,7 +53,7 @@ export default function Tenants() {
       });
       refresh();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

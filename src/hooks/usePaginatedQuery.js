@@ -104,6 +104,9 @@ export function usePaginatedQuery(fetchFn, { defaultSize = 20, defaultSort } = {
     setSort,
     setSearch,
     setSearchImmediate,
+    // #18: 呼び出し側が「今どのフィルタが効いているか」を読めないと、同じ値を
+    // ローカル state にも持つことになり二重管理になる。現在値も返す。
+    filters,
     setFilters,
     refresh,
   };
