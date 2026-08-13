@@ -37,15 +37,15 @@ useAuthFlow() → { authState, user, tenants, error, isLoading, resume }
 ## Issue #2: /monitor page — リアルタイム認証フロー可視化
 
 ### 背景
-- `@unlaxer/tramli-viz` はまだ npm 未公開 (tramli#37 待ち)
-- `volta-auth-proxy#22` の WebSocket エンドポイントも未完了
-- ページの骨組みとフォールバック UI を先行実装
+- `@unlaxer/tramli-viz@0.2.0` は npm 公開済み
+- auth-proxy の `/viz/ws` bridge に接続する実装が利用可能
+- SSE (`/viz/auth/stream`) と flow 定義 (`/viz/flows`) も利用する
 
 ### 変更内容
 
 #### 1. `src/pages/Monitor.jsx` — 新規作成
-- `@unlaxer/tramli-viz` が利用可能な場合: `VizDashboard` をレンダリング
-- 利用不可の場合: 依存関係のステータスと Coming Soon UI を表示
+- `@unlaxer/tramli-viz` を dynamic import し `VizDashboard` をレンダリング
+- `/viz/flows` の取得失敗は soft-fail として扱う
 - WebSocket URL: `wss://${window.location.host}/viz/ws`
 - 表示フロー: session, oidc, passkey, mfa, invite
 - レイアウト: layered, テーマ: dark
@@ -57,7 +57,7 @@ useAuthFlow() → { authState, user, tenants, error, isLoading, resume }
 #### 3. `src/App.jsx` — 変更
 - `<Route path="/monitor" element={<Monitor />} />` 追加
 
-### API 変更: なし (WebSocket は auth-proxy#22 で提供予定)
+### API 変更: なし (Monitor は `/viz/` の SSE/REST/WS を利用)
 
 ---
 
