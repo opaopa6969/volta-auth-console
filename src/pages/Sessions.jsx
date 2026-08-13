@@ -2,18 +2,21 @@ import { useCallback } from 'react';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
 import ServerDataTable from '../components/ServerDataTable';
+import { useConfirm, useToast } from '../lib/dialogContext';
 
 export default function Sessions() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const fetchSessions = useCallback((params) => api.listSessions(params), []);
   const pq = usePaginatedQuery(fetchSessions, { defaultSize: 20 });
 
   const handleRevoke = async (session) => {
-    if (!confirm(`Revoke session from ${session.ip || 'unknown IP'}?`)) return;
+    if (!await confirm({ message: `Revoke session from ${session.ip || 'unknown IP'}?`, danger: true })) return;
     try {
       await api.revokeSession(session.id);
       pq.refresh();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

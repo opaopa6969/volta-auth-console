@@ -1,3 +1,15 @@
+> **これは歴史的な実装メモです（#21）。** Issue #1〜#3 を実装したときの作業記録で、
+> 現在の仕様ではありません。**正式仕様は [`spec/SPEC.md`](../spec/SPEC.md)** を、
+> 構成は [`docs/architecture.md`](architecture.md) を参照してください。
+>
+> 削除せず残しているのは「なぜこの形になったか」の経緯が読めるため。ただし
+> 以下は既に古い記述です:
+>
+> - 「authStore.js は tramli を使わず独自に `api.me()` + `api.myTenants()` で
+>   認証チェックしている」→ `useAuthFlow`（tramli `sessionResumeDefinition`）に
+>   置き換え済み。`authStore.init` は 2026-08 に削除（#17）
+> - `SessionCheckGuard` は結線されないまま残っていたため削除（#15）
+
 # volta-auth-console 実装仕様書
 
 ## Issue #1: tramli 導入 — 認証状態をフロントエンドでも状態マシンで管理

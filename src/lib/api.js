@@ -29,6 +29,42 @@ async function request(path, options = {}) {
   return rawRequest(`${API_BASE}${path}`, options);
 }
 
+// ── 401 のグローバルハンドリング (#24) ─────────────────────────────────
+//
+// 従来は 401 を throw するだけで、各ページが `.catch(() => [])` で握り潰して
+// いた。結果、**認証後にセッションが切れると画面が空になるだけ**で、ログインへ
+// 誘導されなかった（初回マウント時だけは sessionResumeDefinition が拾う）。
+//
+// リダイレクトを api.js に直接書くと DOM と Router に依存してテストで mock が
+// 必要になるので、ハンドラを登録できる形にした。実際の遷移先は main.jsx が決める。
+let unauthorizedHandler = null;
+
+// 同時に複数のリクエストが 401 になってもリダイレクトは1回で足りる。
+let unauthorizedNotified = false;
+
+/**
+ * 401 を受けたときに呼ばれるハンドラを登録する。
+ *
+ * 登録し直したら「抑制」も解除する。同じセッションの多重通知は防ぎたいが、
+ * ハンドラを差し替えるのは文脈が変わったとき（テスト、再ログイン後）なので、
+ * そこで抑制が残っていると次の 401 を取りこぼす。
+ */
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = fn;
+  unauthorizedNotified = false;
+}
+
+function notifyUnauthorized() {
+  if (unauthorizedNotified) return;
+  unauthorizedNotified = true;
+  try {
+    unauthorizedHandler?.();
+  } finally {
+    // 次のセッションでまた検知できるよう、少し待って解除する。
+    setTimeout(() => { unauthorizedNotified = false; }, 5000);
+  }
+}
+
 async function rawRequest(url, options = {}) {
   const res = await fetch(url, {
     credentials: 'include',
@@ -36,6 +72,7 @@ async function rawRequest(url, options = {}) {
     ...options,
   });
   if (res.status === 401) {
+    notifyUnauthorized();
     throw new Error('Unauthorized');
   }
   if (!res.ok) {
@@ -90,6 +127,8 @@ export const api = {
   // 配下に寄せた。旧 /api/me/sessions・/auth/sessions/{id} はサーバーに
   // 後方互換で残るがフロントからは叩かない。
   // request() 経由で API_BASE が自動付与され、401/非2xx のエラーハンドリングも共通化される。
+  myMfa: () => request('/users/me/mfa'),
+  updateUser: (uid, data) => request(`/users/${uid}`, { method: 'PATCH', body: JSON.stringify(data) }),
   mySessions: () => request('/users/me/sessions').then(d => d.items || d),
   revokeSession: (id) => request(`/users/me/sessions/${id}`, { method: 'DELETE' }),
 

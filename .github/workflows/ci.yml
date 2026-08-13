@@ -26,8 +26,11 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
+      # #16: warn-only をやめた。既存の指摘（未使用変数・set-state-in-effect）は
+      # 2026-08-13 に全部潰したので、これ以降の新規違反はここで止める。
       - name: Lint (ESLint)
-        # Warn-only: existing code has no-unused-vars / setState-in-effect
-        # findings to be cleaned up separately.
-        continue-on-error: true
         run: npm run lint
+
+      # #9: これまで CI にテストが無く、回帰が誰にも検出されなかった。
+      - name: Test (vitest)
+        run: npm test

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
 import ServerDataTable from '../components/ServerDataTable';
@@ -19,25 +19,26 @@ const columns = [
 ];
 
 export default function Audit() {
-  const [dateRange, setDateRange] = useState({ from: null, to: null });
-  const [eventFilter, setEventFilter] = useState('');
-
-  const fetchAudit = useCallback((params) => {
-    const merged = { ...params };
-    if (dateRange.from) merged.from = dateRange.from;
-    if (dateRange.to) merged.to = dateRange.to;
-    if (eventFilter) merged.event = eventFilter;
-    return api.listAudit(merged);
-  }, [dateRange, eventFilter]);
+  // #18: 以前は event / 日付をローカル state と pq.filters の両方に持ち、
+  // handleEventChange が setEventFilter と pq.setFilters を同時に呼んでいた。
+  // 同じ値が2箇所にあるとどちらが効くのか読めないので、pq.filters に一本化する
+  // （hook が現在値を返すようにした）。fetchAudit は params をそのまま渡すだけ。
+  const fetchAudit = useCallback((params) => api.listAudit(params), []);
 
   const pq = usePaginatedQuery(fetchAudit, { defaultSize: 50 });
 
+  const eventFilter = pq.filters.event ?? '';
+  const dateRange = { from: pq.filters.from ?? null, to: pq.filters.to ?? null };
+
   const handleDateChange = (range) => {
-    setDateRange(range);
+    pq.setFilters(prev => ({
+      ...prev,
+      from: range.from || undefined,
+      to: range.to || undefined,
+    }));
   };
 
   const handleEventChange = (e) => {
-    setEventFilter(e.target.value);
     pq.setFilters(prev => ({ ...prev, event: e.target.value || undefined }));
   };
 

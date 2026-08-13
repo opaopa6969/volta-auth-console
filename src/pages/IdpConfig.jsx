@@ -13,12 +13,13 @@ const columns = [
 export default function IdpConfig() {
   const [configs, setConfigs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const user = useAuthStore(s => s.user);
+  // #26: 選択中テナント（未選択なら user.tenantId → 所属先頭）
+  const tenantId = useAuthStore(s => s.currentTenantId());
 
   useEffect(() => {
-    if (!user?.tenantId) return;
-    api.listIdpConfigs(user.tenantId).then(setConfigs).catch(() => setConfigs([])).finally(() => setLoading(false));
-  }, [user?.tenantId]);
+    if (!tenantId) return;
+    api.listIdpConfigs(tenantId).then(setConfigs).catch(() => setConfigs([])).finally(() => setLoading(false));
+  }, [tenantId]);
 
   if (loading) return <div className="text-gray-400 p-8">Loading...</div>;
 

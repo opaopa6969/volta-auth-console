@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
 import ServerDataTable from '../components/ServerDataTable';
+import { usePrompt, useToast } from '../lib/dialogContext';
 
 const STATUS_OPTIONS = ['', 'PENDING', 'USED', 'EXPIRED'];
 
@@ -18,8 +19,10 @@ const columns = [
 ];
 
 export default function Invitations() {
-  const user = useAuthStore(s => s.user);
-  const tenantId = user?.tenantId;
+  const prompt = usePrompt();
+  const toast = useToast();
+  // #26: 選択中テナント（未選択なら user.tenantId → 所属先頭）
+  const tenantId = useAuthStore(s => s.currentTenantId());
   const [statusFilter, setStatusFilter] = useState('');
 
   const fetchInvitations = useCallback((params) => {
@@ -32,11 +35,29 @@ export default function Invitations() {
   const pq = usePaginatedQuery(fetchInvitations, { defaultSize: 20 });
 
   const handleCreate = async () => {
-    const email = prompt('Restrict to email (leave empty for any):');
-    const role = prompt('Role (MEMBER/ADMIN):', 'MEMBER');
+    // #27: ネイティブ prompt をアプリ内ダイアログに置き換えた。
+    // email はキャンセル(null)と空文字を区別する必要がある（空 = 誰でも使える招待）。
+    const email = await prompt({
+      title: 'Create invitation',
+      message: '招待を受け取れるメールアドレスを制限できます（空なら誰でも可）。',
+      label: 'Email (optional)',
+    });
+    if (email === null) return;
+
+    const role = await prompt({
+      title: 'Create invitation',
+      message: '付与するロールを入力してください。',
+      label: 'Role (MEMBER / ADMIN)',
+      defaultValue: 'MEMBER',
+    });
     if (role === null) return;
-    await api.createInvitation(tenantId, { email: email || undefined, role });
-    pq.refresh();
+
+    try {
+      await api.createInvitation(tenantId, { email: email || undefined, role });
+      pq.refresh();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const extraFilters = (
