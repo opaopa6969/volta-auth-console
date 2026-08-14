@@ -7,7 +7,7 @@ import ServerDataTable from '../components/ServerDataTable';
 const columns = [
   { key: 'userId', label: 'User ID', render: (v) => <span className="font-mono text-xs">{v?.slice(0, 8)}</span> },
   { key: 'role', label: 'Role', render: (v) => {
-    const colors = { OWNER: 'text-yellow-400', ADMIN: 'text-blue-400', MEMBER: 'text-green-400', VIEWER: 'text-gray-400' };
+    const colors = { OWNER: 'text-yellow-400', ADMIN: 'text-blue-400', OPERATOR: 'text-orange-400', MEMBER: 'text-green-400', VIEWER: 'text-gray-400' };
     return <span className={`font-mono font-bold ${colors[v] || ''}`}>{v}</span>;
   }},
   { key: 'active', label: 'Status', sortable: false, render: (v) => v ? '🟢 Active' : '🔴 Inactive' },
