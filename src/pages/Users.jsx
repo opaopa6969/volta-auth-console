@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
+import { useCurrentTenant } from '../hooks/useCurrentTenant';
 import ServerDataTable from '../components/ServerDataTable';
 
 const columns = [
@@ -13,7 +13,7 @@ const columns = [
 ];
 
 export default function Users() {
-  const user = useAuthStore(s => s.user);
+  const { tenantId } = useCurrentTenant();
 
   const fetchUsers = useCallback((params) => api.listUsers(params), []);
   const pq = usePaginatedQuery(fetchUsers, { defaultSize: 20, defaultSort: 'email' });
@@ -21,7 +21,7 @@ export default function Users() {
   const handleResetMfa = async (userId) => {
     if (!confirm('Reset MFA for this user? They will need to set up MFA again.')) return;
     try {
-      await api.adminResetMfa(user?.tenantId, userId);
+      await api.adminResetMfa(tenantId, userId);
       pq.refresh();
     } catch (err) {
       alert(err.message);

@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
+import { useCurrentTenant } from '../hooks/useCurrentTenant';
+import { assignableRoles } from '../lib/roles';
 import ServerDataTable from '../components/ServerDataTable';
 
 const STATUS_OPTIONS = ['', 'PENDING', 'USED', 'EXPIRED'];
@@ -18,8 +19,9 @@ const columns = [
 ];
 
 export default function Invitations() {
-  const user = useAuthStore(s => s.user);
-  const tenantId = user?.tenantId;
+  // `user.tenantId` は存在しない（/users/me が返さない）。テナントとロールは
+  // /users/me/tenants 側にある。
+  const { tenantId, myRole } = useCurrentTenant();
   const [statusFilter, setStatusFilter] = useState('');
 
   const fetchInvitations = useCallback((params) => {
@@ -33,9 +35,16 @@ export default function Invitations() {
 
   const handleCreate = async () => {
     const email = prompt('Restrict to email (leave empty for any):');
-    const role = prompt('Role (MEMBER/ADMIN):', 'MEMBER');
+    // 招待できるロールは自分以下に限る（API 側の規則と揃える）。
+    const allowed = assignableRoles(myRole);
+    const role = prompt(`Role (${allowed.join('/')}):`, 'MEMBER');
     if (role === null) return;
-    await api.createInvitation(tenantId, { email: email || undefined, role });
+    const normalized = String(role).trim().toUpperCase();
+    if (!allowed.includes(normalized)) {
+      alert(`${normalized || '(空)'} は付与できません。${allowed.join(' / ')} のいずれかを指定してください。`);
+      return;
+    }
+    await api.createInvitation(tenantId, { email: email || undefined, role: normalized });
     pq.refresh();
   };
 
