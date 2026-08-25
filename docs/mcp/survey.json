@@ -1,0 +1,73 @@
+{
+  "repo": "volta-auth-console",
+  "surveyed_at": "2026-08-22T00:00:00Z",
+  "kind": "service",
+  "summary": "volta-auth-proxy (Java バックエンド) のための React 19 + Vite 8 製管理 SPA。ユーザー・テナント・セッション・監査ログ・Webhook・署名鍵等を 12 画面で管理する。SPA 単体では API を持たず、すべてのリクエストを nginx 経由で volta-auth-proxy にプロキシする。volta にホスト済み (docker, auth-console.unlaxer.org)。",
+  "decision": "skip",
+  "decision_reason": "純粋なフロントエンド SPA であり、独自のサーバー側 API・ビジネスロジックを持たない。すべての操作はバックエンド (volta-auth-proxy) の REST API を叩くだけで、このリポジトリには MCP で公開する価値のある「能力」(入力→出力が定義できる操作) が存在しない。MCP 化すべき対象はバックエンド側 (volta-auth-proxy) であり、このコンソールはその UI に過ぎない。volta-auth-proxy 自体も catalog で operational_status=retired であり、後継の volta-gateway (Rust) への移行が想定される。現時点でこのリポジトリに MCP サーバを立てても意味がない。",
+  "existing": {
+    "http_api": false,
+    "cli": false,
+    "mcp": false,
+    "healthz": false,
+    "volta_manifest": false,
+    "hosted_url": "https://auth-console.unlaxer.org"
+  },
+  "proposed_namespace": null,
+  "capabilities": [
+    {
+      "verb": "auth-proxy 管理 API の仕様を参照する",
+      "kind": "resource",
+      "name": "spec",
+      "uri": "authconsole://spec",
+      "note": "この SPA が叩く API エンドポイント一覧 (api.js に定義) を機械可読化したもの。ただし API の実体は volta-auth-proxy 側にあるため、spec はここではなく auth-proxy 側で公開するのが適切。"
+    },
+    {
+      "verb": "auth-console の使い方",
+      "kind": "resource",
+      "name": "guide",
+      "uri": "authconsole://guide",
+      "note": "12 画面の操作ガイド。docs/pages.md と docs/SPEC.md に同等の情報が既存する。"
+    }
+  ],
+  "composition_examples": [
+    "volta-auth-proxy を MCP 化した場合: authproxy__list_users → agent がユーザー状況を把握 → authproxy__suspend_tenant でテナント停止、のようにバックエンド側の tool として公開されるべき。このコンソールリポジトリは組み合わせの経路には入らない。"
+  ],
+  "dependencies": [
+    {
+      "repo": "volta-auth-proxy",
+      "direction": "depends_on",
+      "capability": "全管理 API (users, tenants, sessions, audit, webhooks, keys, idp-configs, mfa)",
+      "exists_now": true,
+      "note": "この SPA が存在する理由となるバックエンド。catalog で operational_status=retired。MCP 化の対象はこちら。"
+    },
+    {
+      "repo": "volta-gateway",
+      "direction": "depends_on",
+      "capability": "後継の認証ゲートウェイ (Rust)",
+      "exists_now": true,
+      "note": "volta-auth-proxy の後継と見られる。catalog に登録済み。今後の管理 API がこちらに移る可能性がある。"
+    },
+    {
+      "repo": "tramli",
+      "direction": "depends_on",
+      "capability": "@unlaxer/tramli, @unlaxer/tramli-react, @unlaxer/tramli-viz (フロー定義・可視化)",
+      "exists_now": true,
+      "note": "認証フロー状態管理ライブラリ。ライブラリ型で MCP 不要。"
+    }
+  ],
+  "library_serve": {
+    "needed": false,
+    "new_work": [],
+    "runtime": "node",
+    "estimated_effort": "S"
+  },
+  "risks": [
+    "このリポジトリにはサーバー側コードがないため、MCP サーバを立てるにはバックエンド API を再実装またはプロキシする必要があるが、それは volta-auth-proxy の MCP 化で解決すべき問題。",
+    "volta-auth-proxy が retired 状態であり、volta-gateway (Rust) への移行期。今このコンソール周りに投資しても移行で陳腐化する可能性が高い。"
+  ],
+  "open_questions": [
+    "volta-auth-proxy → volta-gateway への移行後、このコンソールは使われ続けるのか？移行先に管理 API が用意されるのか？",
+    "バックエンド (volta-auth-proxy or volta-gateway) の管理 API を MCP 化する計画はあるか？もしあれば、このコンソールの UI は人間向け・MCP はエージェント向けと住み分けられる。"
+  ]
+}
