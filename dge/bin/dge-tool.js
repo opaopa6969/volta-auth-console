@@ -2,8 +2,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import process from 'node:process';
 import { Buffer } from 'node:buffer';
+import process from 'node:process';
 
 const VERSION = '1.0.0';
 const command = process.argv[2];
