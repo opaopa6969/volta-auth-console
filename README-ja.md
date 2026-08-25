@@ -50,7 +50,7 @@
 | `/webhooks` | Webhooks | Webhook CRUD + 配信履歴 |
 | `/keys` | SigningKeys | 署名鍵一覧・ローテーション |
 | `/settings` | Settings | テナントレベル設定 |
-| `/monitor` | Monitor | tramli-viz リアルタイムフロー（ブロッカー: tramli#37） |
+| `/monitor` | Monitor | tramli-viz リアルタイムフロー（SSE + WebSocket） |
 
 ---
 
@@ -62,7 +62,7 @@ npm install
 
 # 2. 開発サーバー起動（認証クッキー用に大きなヘッダーサイズが必要）
 npm run dev
-# → http://localhost:5173
+# → http://localhost:3400
 
 # 3. ビルド
 npm run build
@@ -129,10 +129,10 @@ API クライアント (`src/lib/api.js`) は 3 つのパスプレフィック�
 | プレフィックス | 用途 | 備考 |
 |--------------|------|------|
 | `/api/v1/` | 管理・テナント API | 大半のエンドポイントで使用するメインプレフィックス |
-| `/api/me/` | ユーザー自身用 API | `mySessions` のみ — 非統一 |
-| `/auth/` | 認証アクション | `revokeSession`（DELETE）のみ |
+| `/api/v1/` | ユーザー自身用 API | `mySessions` と `revokeSession` もこのプレフィックス配下 |
+| `/auth/` | 認証アクション | ログイン・ForwardAuth などの認証操作のみ |
 
-> **既知の非統一**: `/api/me/` と `/auth/` は `/api/v1/` から逸脱した例外。整理が必要 — [docs/architecture-ja.md](docs/architecture-ja.md#api-境界の非統一) 参照。
+セッション一覧・失効エンドポイントは現行実装で `/api/v1/users/me/sessions` 配下に統一されている。旧 `/api/me/sessions` と `/auth/sessions/:id` はバックエンドの後方互換ルートとして残るが、この SPA からは呼び出さない。
 
 ---
 
@@ -156,14 +156,11 @@ proxy_pass http://192.168.1.13:7070;   # ← 実際のホストに変更
 
 `react-router-dom` と `zustand` が `package.json` の `devDependencies` に記載されている。両方とも**ランタイム依存関係**であり、公開またはコンテナ化する前に `dependencies` へ移動すること。Vite がすべてバンドルするため開発・ビルドでは動作するが、ダウンストリームの利用者に対して誤解を招く。
 
-### Monitor ページのブロッカー
+### Monitor ページ
 
-`/monitor` ページには未解決の上流タスクが 2 つある:
-
-- **tramli#37** — `@unlaxer/tramli-viz` が npm に未公開
-- **volta-auth-proxy#22** — WebSocket エンドポイント（`/viz/ws`）が未実装
-
-両方が解決されるまで "Coming Soon" フォールバック UI を表示する。
+`/monitor` ページは npm 公開済みの `@unlaxer/tramli-viz@0.2.0` を使い、
+フローテレメトリ用の `/viz/ws` に接続する。`/viz/auth/stream` の SSE フィードと
+`/viz/flows` のフロー定義も利用する。
 
 ---
 

@@ -4,6 +4,7 @@ import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
 import { useCurrentTenant } from '../hooks/useCurrentTenant';
 import { assignableRoles } from '../lib/roles';
 import ServerDataTable from '../components/ServerDataTable';
+import { usePrompt, useToast } from '../lib/dialogContext';
 
 const STATUS_OPTIONS = ['', 'PENDING', 'USED', 'EXPIRED'];
 
@@ -19,6 +20,8 @@ const columns = [
 ];
 
 export default function Invitations() {
+  const prompt = usePrompt();
+  const toast = useToast();
   // `user.tenantId` は存在しない（/users/me が返さない）。テナントとロールは
   // /users/me/tenants 側にある。
   const { tenantId, myRole } = useCurrentTenant();
@@ -34,18 +37,36 @@ export default function Invitations() {
   const pq = usePaginatedQuery(fetchInvitations, { defaultSize: 20 });
 
   const handleCreate = async () => {
-    const email = prompt('Restrict to email (leave empty for any):');
+    // #27: ネイティブ prompt をアプリ内ダイアログに置き換えた。
+    // email はキャンセル(null)と空文字を区別する必要がある（空 = 誰でも使える招待）。
+    const email = await prompt({
+      title: 'Create invitation',
+      message: '招待を受け取れるメールアドレスを制限できます（空なら誰でも可）。',
+      label: 'Email (optional)',
+    });
+    if (email === null) return;
+
     // 招待できるロールは自分以下に限る（API 側の規則と揃える）。
     const allowed = assignableRoles(myRole);
-    const role = prompt(`Role (${allowed.join('/')}):`, 'MEMBER');
+    const role = await prompt({
+      title: 'Create invitation',
+      message: '付与するロールを入力してください。',
+      label: `Role (${allowed.join(' / ')})`,
+      defaultValue: 'MEMBER',
+    });
     if (role === null) return;
     const normalized = String(role).trim().toUpperCase();
     if (!allowed.includes(normalized)) {
-      alert(`${normalized || '(空)'} は付与できません。${allowed.join(' / ')} のいずれかを指定してください。`);
+      toast.error(`${normalized || '(空)'} は付与できません。${allowed.join(' / ')} のいずれかを指定してください。`);
       return;
     }
-    await api.createInvitation(tenantId, { email: email || undefined, role: normalized });
-    pq.refresh();
+
+    try {
+      await api.createInvitation(tenantId, { email: email || undefined, role: normalized });
+      pq.refresh();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const extraFilters = (

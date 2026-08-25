@@ -53,7 +53,7 @@ volta-auth-proxy が別のホスト/ポートで動いている場合はプロ�
 npm run dev
 ```
 
-[http://localhost:5173](http://localhost:5173) を開く。volta-auth-proxy に到達できる場合、ログインページにリダイレクトされ、認証後に Dashboard に遷移する。
+[http://localhost:3400](http://localhost:3400) を開く。volta-auth-proxy に到達できる場合、ログインページにリダイレクトされ、認証後に Dashboard に遷移する。
 
 ---
 
@@ -91,7 +91,7 @@ CHECKING → api.me() + api.myTenants()（並列）
 
 ## 6. ロールベースアクセス
 
-Sidebar は `ADMIN` または `OWNER` ロールのユーザーにのみ **Monitor** リンクを表示する。他の画面はページコンポーネント自身でロールチェックを行う。ロールは zustand `authStore` の `user` オブジェクト（`api.me()` レスポンスから取得）に含まれる。
+Sidebar は `ADMIN` または `OWNER` ロールのユーザーにのみ **Monitor** リンクを表示する。ロールは zustand `authStore` の `user` オブジェクト（セッション再開フローから取得）に含まれる。
 
 ---
 
@@ -102,4 +102,4 @@ Sidebar は `ADMIN` または `OWNER` ロールのユーザーにのみ **Monito
 | 白画面でリダイレクトされない | volta-auth-proxy に到達できない | vite.config.js のプロキシターゲットを確認 |
 | `431 Request Header Fields Too Large` | `NODE_OPTIONS` が未設定 | `vite` 直接実行ではなく `npm run dev` を使う |
 | 認証ループ（リダイレクト → ログイン → リダイレクト） | Cookie のドメインが一致しない | 開発サーバーとプロキシが同じオリジンか確認 |
-| Monitor ページが "Coming Soon" を表示 | tramli#37 または volta-auth-proxy#22 が未解決 | 想定動作 — [docs/monitor-page-ja.md](monitor-page-ja.md) 参照 |
+| Monitor ページにライブデータが出ない | `/viz/auth/stream`・`/viz/flows`・`/viz/ws` が利用できない | volta-auth-proxy の Monitor 用エンドポイントを確認 — [docs/monitor-page-ja.md](monitor-page-ja.md) 参照 |

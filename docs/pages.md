@@ -88,10 +88,10 @@ Each of the 12 pages, its role, and the API endpoints it calls.
 | Method | Endpoint | Usage |
 |--------|----------|-------|
 | GET | `/api/v1/admin/sessions?page=&size=&user_id=` | Paginated session list |
-| GET | `/api/me/sessions` | Current user's own sessions |
-| DELETE | `/auth/sessions/:id` | Revoke a session |
+| GET | `/api/v1/users/me/sessions` | Current user's own sessions |
+| DELETE | `/api/v1/users/me/sessions/:id` | Revoke a session |
 
-> **API inconsistency**: `/api/me/sessions` and `/auth/sessions/:id` deviate from the `/api/v1/` prefix — tracked for cleanup.
+The legacy `/api/me/sessions` and `/auth/sessions/:id` routes remain as backend compatibility routes; this SPA does not call them.
 
 ---
 
@@ -156,13 +156,16 @@ Each of the 12 pages, its role, and the API endpoints it calls.
 
 ## Settings (`/settings`)
 
-**Role**: Manage tenant-level settings (display name, allowed domains, etc.). OWNER only.
+**Role**: Manage the current user's profile, MFA status, and own sessions.
 
 **APIs**:
 | Method | Endpoint | Usage |
 |--------|----------|-------|
-| GET | `/api/v1/tenants/:tid` | Get tenant details |
-| PATCH | `/api/v1/tenants/:tid` | Update tenant settings |
+| GET | `/api/v1/users/me` | Get current user |
+| GET | `/api/v1/users/me/mfa` | Get current user's MFA status |
+| PATCH | `/api/v1/users/:id` | Update display name |
+| GET | `/api/v1/users/me/sessions` | List current user's sessions |
+| DELETE | `/api/v1/users/me/sessions/:id` | Revoke own session |
 
 ---
 
@@ -170,10 +173,9 @@ Each of the 12 pages, its role, and the API endpoints it calls.
 
 **Role**: Real-time visualization of tramli auth flows running in volta-auth-proxy. ADMIN/OWNER only.
 
-**Status**: Blocked — see [docs/monitor-page.md](monitor-page.md).
+**Status**: Available — see [docs/monitor-page.md](monitor-page.md).
 
-**Blockers**:
-- **tramli#37** — `@unlaxer/tramli-viz` not yet published
-- **volta-auth-proxy#22** — WebSocket endpoint not yet implemented
-
-**Fallback UI**: When either blocker is unresolved, the page shows a status panel listing the missing dependencies and an estimated timeline.
+**Data sources**:
+- `GET /viz/flows` — flow definitions
+- `GET /viz/auth/stream` — SSE auth events
+- `ws(s)://${window.location.host}/viz/ws` — tramli-viz telemetry

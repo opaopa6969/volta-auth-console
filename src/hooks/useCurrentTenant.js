@@ -9,11 +9,10 @@ import { useAuthStore } from '../store/authStore';
  */
 export function useCurrentTenant() {
   const tenants = useAuthStore(s => s.tenants);
-  const currentTenantId = useAuthStore(s => s.currentTenantId);
-  const setCurrentTenant = useAuthStore(s => s.setCurrentTenant);
+  const tenantId = useAuthStore(s => s.currentTenantId());
+  const setCurrentTenant = useAuthStore(s => s.setSelectedTenantId);
 
-  const tenantId = currentTenantId ?? tenants[0]?.id ?? null;
-  const tenant = tenants.find(t => t.id === tenantId) ?? null;
+  const tenant = tenants.find(t => (t.id || t.tenantId) === tenantId) ?? null;
 
   return {
     tenantId,

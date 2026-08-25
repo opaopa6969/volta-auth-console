@@ -9,7 +9,7 @@
 - [Auth Flow (tramli)](#auth-flow-tramli)
 - [State Management](#state-management)
 - [API Layer](#api-layer)
-- [API Boundary Inconsistency](#api-boundary-inconsistency)
+- [API Boundary](#api-boundary)
 - [nginx.conf](#nginxconf)
 - [Component Map](#component-map)
 
@@ -131,7 +131,7 @@ The store is populated exclusively by `useAuthFlow` (tramli result). Direct `api
 
 `src/lib/api.js` — credential-bearing fetch wrapper.
 
-Base constant: `const BASE = '/api/v1'`
+Base constant: `const API_BASE = '/api/v1'`
 
 ### Pagination helper
 
@@ -158,19 +158,18 @@ Paginated response shape (from volta-auth-proxy v0.x):
 
 ---
 
-## API Boundary Inconsistency
+## API Boundary
 
 Three path prefixes are in use — this is a known tech debt:
 
 | Prefix | Endpoints | Issue |
 |--------|-----------|-------|
-| `/api/v1/` | All admin + tenant endpoints | Canonical — should be the only prefix |
-| `/api/me/` | `mySessions` only | Inconsistent — should be `/api/v1/users/me/sessions` |
-| `/auth/` | `revokeSession` (DELETE) only | Inconsistent — should be `/api/v1/sessions/:id` |
+| `/api/v1/` | All admin, tenant, and user-self endpoints | Canonical prefix used by this SPA |
+| `/auth/` | Login/forward-auth actions | Separate auth-action prefix; session REST calls no longer use it |
 
-Root cause: `mySessions` and `revokeSession` were added at different times before an API versioning policy was established.
-
-**Remediation plan**: Align under `/api/v1/` when volta-auth-proxy stabilises its routing. Track in `api.js` with `// TODO: unify prefix` comments.
+`mySessions` and `revokeSession` use `/api/v1/users/me/sessions` and
+`/api/v1/users/me/sessions/:id`. The legacy `/api/me/sessions` and
+`/auth/sessions/:id` routes remain backend compatibility routes, but this SPA does not call them.
 
 ---
 

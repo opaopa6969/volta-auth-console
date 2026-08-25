@@ -190,8 +190,8 @@ useAuthStore {
 | POST | `/api/v1/tenants/:tid/invitations` | 招待作成 |
 | DELETE | `/api/v1/tenants/:tid/invitations/:iid` | 招待削除 |
 | GET | `/api/v1/admin/sessions[?params]` | セッション一覧 (管理) |
-| GET | `/api/me/sessions` | 自分のセッション一覧 (**注意: `/api/me/` プレフィックス**) |
-| DELETE | `/auth/sessions/:id` | セッション失効 (**注意: `/auth/` プレフィックス**) |
+| GET | `/api/v1/users/me/sessions` | 自分のセッション一覧 |
+| DELETE | `/api/v1/users/me/sessions/:id` | セッション失効 |
 | GET | `/api/v1/admin/audit[?params]` | 監査ログ (管理) |
 | GET | `/api/v1/tenants/:tid/idp-configs` | IdP 設定一覧 |
 | GET | `/api/v1/tenants/:tid/webhooks` | Webhook 一覧 |
@@ -395,12 +395,12 @@ Promise.all([
 | プレフィックス | 用途 | 例 |
 |--------------|------|-----|
 | `/api/v1/` | 主要管理 API | `/api/v1/admin/users` |
-| `/api/me/` | ユーザー自身リソース | `/api/me/sessions` |
-| `/auth/` | 認証操作 | `/auth/sessions/:id` (DELETE) |
+| `/api/v1/` | ユーザー自身を含む主要 API | `/api/v1/users/me/sessions` |
+| `/auth/` | ログイン・ForwardAuth などの認証操作 | セッション REST API では使わない |
 | `/viz/` | Monitor ページ専用 | `/viz/auth/stream` (SSE), `/viz/flows`, `/viz/ws` (WS) |
 
-`/api/me/sessions` と `/auth/sessions/:id` は `api.js` の共通 `request()` を
-使用せず直接 `fetch()` を呼んでいる。これは API 境界の非統一を意味する。
+旧 `/api/me/sessions` と `/auth/sessions/:id` はバックエンドの後方互換ルートとして残るが、
+この SPA は `api.js` の共通 `request()` 経由で `/api/v1/users/me/sessions` 配下を呼ぶ。
 
 ### 6.2 Vite dev proxy
 
@@ -593,13 +593,13 @@ audit ログが大量にある場合、`listAudit()` のレスポンスが特に
 **推奨**: バックエンドに `/api/v1/admin/stats` 等の集計 API を追加し、
 Dashboard は集計値のみを取得する設計に変更する。
 
-### 10.2 API 境界の非統一
+### 10.2 API 境界
 
-3 種類のプレフィックス (`/api/v1/`, `/api/me/`, `/auth/`) が混在しており、
-`api.js` の共通 `request()` ラッパーを通さない直接 `fetch()` 呼び出しが
-`Sessions.jsx` (mySessions, revokeSession) と `Settings.jsx` に存在する。
+この SPA のセッション一覧・失効は `/api/v1/users/me/sessions` 配下に統一され、
+`api.js` の共通 `request()` ラッパーを通る。旧 `/api/me/sessions` と
+`/auth/sessions/:id` はバックエンドの後方互換ルートとして残るが、SPA からは呼ばない。
 
-**推奨**: `api.js` にすべての API 呼び出しを集約し、`request()` ラッパーを通す。
+`Settings.jsx` は MFA 状態取得とプロフィール更新を直接 `fetch()` する。
 
 ### 10.3 nginx の /viz/ 未定義
 
@@ -1194,7 +1194,7 @@ confirm ダイアログには "Active JWTs will still be valid until expiry." �
 - TOTP 無効時または MFA 管理 URI: `/settings/security` (volta-auth-proxy のセキュリティ設定ページ)
 
 **Sessions セクション**:
-- `api.mySessions()` → `GET /api/me/sessions` → セッション一覧
+- `api.mySessions()` → `GET /api/v1/users/me/sessions` → セッション一覧
 - セッション失効後は `setSessions(s => s.filter(x => x.id !== session.id))` でローカル更新
   (再 fetch しない)
 

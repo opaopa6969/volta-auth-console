@@ -88,10 +88,10 @@
 | メソッド | エンドポイント | 用途 |
 |--------|------------|-----|
 | GET | `/api/v1/admin/sessions?page=&size=&user_id=` | ページネーション付きセッション一覧 |
-| GET | `/api/me/sessions` | 現在のユーザー自身のセッション |
-| DELETE | `/auth/sessions/:id` | セッション失効 |
+| GET | `/api/v1/users/me/sessions` | 現在のユーザー自身のセッション |
+| DELETE | `/api/v1/users/me/sessions/:id` | セッション失効 |
 
-> **API 非統一**: `/api/me/sessions` と `/auth/sessions/:id` は `/api/v1/` プレフィックスから逸脱 — 整理対象として追跡中。
+旧 `/api/me/sessions` と `/auth/sessions/:id` はバックエンドの後方互換ルートとして残るが、この SPA からは呼び出さない。
 
 ---
 
@@ -156,13 +156,16 @@
 
 ## Settings (`/settings`)
 
-**役割**: テナントレベルの設定（表示名・許可ドメインなど）を管理する。OWNER のみ。
+**役割**: 現在のユーザーのプロフィール、MFA 状態、自身のセッションを管理する。
 
 **API**:
 | メソッド | エンドポイント | 用途 |
 |--------|------------|-----|
-| GET | `/api/v1/tenants/:tid` | テナント詳細取得 |
-| PATCH | `/api/v1/tenants/:tid` | テナント設定更新 |
+| GET | `/api/v1/users/me` | 現在のユーザー取得 |
+| GET | `/api/v1/users/me/mfa` | 現在のユーザーの MFA 状態取得 |
+| PATCH | `/api/v1/users/:id` | 表示名更新 |
+| GET | `/api/v1/users/me/sessions` | 現在のユーザーのセッション一覧 |
+| DELETE | `/api/v1/users/me/sessions/:id` | 自身のセッション失効 |
 
 ---
 
@@ -170,10 +173,9 @@
 
 **役割**: volta-auth-proxy で実行中の tramli 認証フローをリアルタイム可視化する。ADMIN/OWNER のみ。
 
-**ステータス**: ブロック中 — [docs/monitor-page-ja.md](monitor-page-ja.md) 参照。
+**ステータス**: 利用可能 — [docs/monitor-page-ja.md](monitor-page-ja.md) 参照。
 
-**ブロッカー**:
-- **tramli#37** — `@unlaxer/tramli-viz` が npm に未公開
-- **volta-auth-proxy#22** — WebSocket エンドポイントが未実装
-
-**フォールバック UI**: どちらかのブロッカーが未解決の場合、不足している依存関係と推定スケジュールを示すステータスパネルを表示する。
+**データソース**:
+- `GET /viz/flows` — フロー定義
+- `GET /viz/auth/stream` — SSE 認証イベント
+- `ws(s)://${window.location.host}/viz/ws` — tramli-viz テレメトリ

@@ -131,7 +131,7 @@ flowchart TB
 
 `src/lib/api.js` — Cookie 付き fetch ラッパー。
 
-ベース定数: `const BASE = '/api/v1'`
+ベース定数: `const API_BASE = '/api/v1'`
 
 ### ページネーションヘルパー
 
@@ -164,13 +164,12 @@ function paginated(path, params = {}) {
 
 | プレフィックス | エンドポイント | 問題 |
 |--------------|-------------|------|
-| `/api/v1/` | すべての管理・テナント API | 正規 — 唯一のプレフィックスにすべき |
-| `/api/me/` | `mySessions` のみ | 非統一 — `/api/v1/users/me/sessions` に変更すべき |
-| `/auth/` | `revokeSession`（DELETE）のみ | 非統一 — `/api/v1/sessions/:id` に変更すべき |
+| `/api/v1/` | すべての管理・テナント・ユーザー自身用 API | この SPA が使う正規プレフィックス |
+| `/auth/` | ログイン・ForwardAuth などの認証操作 | 認証アクション用の別プレフィックス。セッション REST API では使わない |
 
-**根本原因**: `mySessions` と `revokeSession` が API バージョニングポリシー確立前に別々のタイミングで追加された。
-
-**修正計画**: volta-auth-proxy のルーティングが安定したタイミングで `/api/v1/` に統一する。`api.js` 内に `// TODO: unify prefix` コメントを残して追跡。
+`mySessions` と `revokeSession` はそれぞれ `/api/v1/users/me/sessions` と
+`/api/v1/users/me/sessions/:id` を使う。旧 `/api/me/sessions` と
+`/auth/sessions/:id` はバックエンドの後方互換ルートとして残るが、この SPA からは呼び出さない。
 
 ---
 
