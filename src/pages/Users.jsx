@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
+import { useCurrentTenant } from '../hooks/useCurrentTenant';
 import ServerDataTable from '../components/ServerDataTable';
 import { useConfirm, useToast } from '../lib/dialogContext';
 
@@ -17,8 +17,8 @@ export default function Users() {
   const confirm = useConfirm();
   const toast = useToast();
   // #26: MFA リセットは「どのテナントのメンバーとして」操作するかで宛先が変わる。
-  // 選択中テナント（未選択なら user.tenantId → 所属先頭）を使う。
-  const tenantId = useAuthStore(s => s.currentTenantId());
+  // 選択中テナント（未選択なら所属先頭）を使う。
+  const { tenantId } = useCurrentTenant();
 
   const fetchUsers = useCallback((params) => api.listUsers(params), []);
   const pq = usePaginatedQuery(fetchUsers, { defaultSize: 20, defaultSort: 'email' });

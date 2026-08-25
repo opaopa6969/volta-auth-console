@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { usePaginatedQuery } from '../hooks/usePaginatedQuery';
+import { useCurrentTenant } from '../hooks/useCurrentTenant';
+import { assignableRoles } from '../lib/roles';
 import ServerDataTable from '../components/ServerDataTable';
 import { usePrompt, useToast } from '../lib/dialogContext';
 
@@ -21,8 +22,9 @@ const columns = [
 export default function Invitations() {
   const prompt = usePrompt();
   const toast = useToast();
-  // #26: 選択中テナント（未選択なら user.tenantId → 所属先頭）
-  const tenantId = useAuthStore(s => s.currentTenantId());
+  // `user.tenantId` は存在しない（/users/me が返さない）。テナントとロールは
+  // /users/me/tenants 側にある。
+  const { tenantId, myRole } = useCurrentTenant();
   const [statusFilter, setStatusFilter] = useState('');
 
   const fetchInvitations = useCallback((params) => {
@@ -44,16 +46,23 @@ export default function Invitations() {
     });
     if (email === null) return;
 
+    // 招待できるロールは自分以下に限る（API 側の規則と揃える）。
+    const allowed = assignableRoles(myRole);
     const role = await prompt({
       title: 'Create invitation',
       message: '付与するロールを入力してください。',
-      label: 'Role (MEMBER / ADMIN)',
+      label: `Role (${allowed.join(' / ')})`,
       defaultValue: 'MEMBER',
     });
     if (role === null) return;
+    const normalized = String(role).trim().toUpperCase();
+    if (!allowed.includes(normalized)) {
+      toast.error(`${normalized || '(空)'} は付与できません。${allowed.join(' / ')} のいずれかを指定してください。`);
+      return;
+    }
 
     try {
-      await api.createInvitation(tenantId, { email: email || undefined, role });
+      await api.createInvitation(tenantId, { email: email || undefined, role: normalized });
       pq.refresh();
     } catch (err) {
       toast.error(err.message);
