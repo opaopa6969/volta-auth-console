@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { Buffer } from 'node:buffer';
 
 const VERSION = '1.0.0';
 const command = process.argv[2];
@@ -95,7 +97,6 @@ function cmdCompare() {
       const plain = data.plain || [];
 
       // Simple title-based dedup
-      const dgeSet = new Set(dge.map(g => g.gap.toLowerCase().trim()));
       const plainSet = new Set(plain.map(g => g.gap.toLowerCase().trim()));
 
       const both = [];
@@ -166,7 +167,7 @@ function cmdCompare() {
       console.log(`DGE のみ: ${dgeOnly.length} 件（深い洞察）`);
       console.log(`素のみ: ${plainOnly.length} 件（網羅的チェック）`);
       console.log(`両方: ${both.length} 件（確実に重要）`);
-    } catch (e) {
+    } catch {
       console.error('ERROR: invalid JSON input. Expected: { "dge": [...], "plain": [...] }');
       process.exit(1);
     }
