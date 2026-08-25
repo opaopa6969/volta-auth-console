@@ -1,0 +1,57 @@
+{
+  "repo": "volta-auth-console",
+  "surveyed_at": "2026-08-21T23:44:30Z",
+  "kind": "service",
+  "summary": "volta-auth-proxy（Java/Rust バックエンド）の管理 UI として機能する React 19 + Vite 8 製 SPA。ユーザー・テナント・セッション・監査ログ・IdP・Webhook・署名鍵・MFA の管理画面 12 ページを提供するが、ビジネスロジックはすべてバックエンドに委譲しており、SPA 自身はプレゼンテーション層のみ。",
+  "decision": "skip",
+  "decision_reason": "このリポジトリは純粋なフロントエンド SPA であり、独自の呼び出し可能な能力を持たない。すべての操作（ユーザー管理、テナント停止/有効化、セッション失効、監査ログ照会、Webhook CRUD、鍵ローテーション、MFA リセット等）は volta-auth-proxy の REST API（/api/v1/*）への薄いラッパーに過ぎない。MCP サーバをこの SPA に付けても volta-auth-proxy の API の二重ラッパーになるだけで、discovery・composability の価値を生まない。認証管理操作の MCP 化が望まれる場合は、能力の実体を持つ volta-auth-proxy 側で MCP 化すべきであり、このコンソールはその resource://guide（使い方）の参照元にとどまるべき。",
+  "existing": {
+    "http_api": false,
+    "cli": false,
+    "mcp": false,
+    "healthz": false,
+    "volta_manifest": false,
+    "hosted_url": "https://auth-console.unlaxer.org"
+  },
+  "proposed_namespace": null,
+  "capabilities": [],
+  "composition_examples": [],
+  "dependencies": [
+    {
+      "repo": "volta-auth-proxy",
+      "direction": "depends_on",
+      "capability": "全管理 API（users, tenants, sessions, audit, webhooks, keys, invitations, idp-configs, MFA）",
+      "exists_now": true,
+      "note": "SPA の api.js が /api/v1/* 経由で全操作を委譲。volta-auth-proxy は catalog に登録済み（operational_status: retired）だが MCP バックエンドは未持ち。MCP 化するなら向こう側。"
+    },
+    {
+      "repo": "volta-auth-proxy",
+      "direction": "depends_on",
+      "capability": "認証フロー（OIDC, session-resume, MFA）",
+      "exists_now": true,
+      "note": "tramli の authFlowDefinition / sessionResumeDefinition はバックエンドの AuthState をミラーするだけ。SPA 側に認証ロジックの実体はない。"
+    },
+    {
+      "repo": "volta-auth-proxy",
+      "direction": "depends_on",
+      "capability": "Monitor ページの SSE/WS（/viz/auth/stream, /viz/flows, /viz/ws）",
+      "exists_now": true,
+      "note": "Monitor ページのリアルタイムイベント・フロー定義はバックエンドが供給。SPA は受信して表示するのみ。"
+    }
+  ],
+  "library_serve": {
+    "needed": false,
+    "new_work": [],
+    "runtime": "node",
+    "estimated_effort": "S"
+  },
+  "risks": [
+    "SPA は Cookie ベース認証（credentials: include）を前提とする。MCP クライアント（エージェント）はブラウザセッションを持たないため、仮にこの SPA の API をラップしても認証クッキー管理が必須になり、MCP のユースケースに合わない。",
+    "Dashboard が全件 fetch（listUsers, adminTenants, listAudit をページネーションなし）する設計上の問題があり、API をそのまま tool にしても負荷リスクがある。",
+    "nginx.conf のバックエンド IP がハードコード（192.168.1.13:7070）されており、環境差分が未解決。"
+  ],
+  "open_questions": [
+    "volta-auth-proxy の MCP 化を別途計画するか？ その場合、このコンソールの画面定義（SPEC.md の 12 ページ仕様）を resource://guide として参照させる形が自然か？",
+    "volta-auth-proxy は operational_status: retired と catalog にある。後継（volta-auth-server / volta-gateway）に管理 API が移行中の場合、MCP 化の対象はどちらになるか？"
+  ]
+}
