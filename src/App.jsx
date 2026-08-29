@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { useAuthFlow } from './hooks/useAuthFlow';
+import { useCurrentTenant } from './hooks/useCurrentTenant';
 import Sidebar from './components/Sidebar';
 import { routes, canAccess } from './routes';
 
@@ -16,6 +17,10 @@ function Forbidden({ roles }) {
 
 export default function App() {
   const { user, loading, error, authenticated } = useAuthStore();
+  // #38: user.role は /users/me に無く /users/me/tenants 側にしか無い。認可判断は
+  // 「現在選択中のテナントでの自分のロール」で行う。user?.role を渡すと
+  // ADMIN/OWNER でも undefined になり /monitor・/keys が見えない・入れない。
+  const { myRole } = useCurrentTenant();
 
   // tramli session-resume flow — syncs result into authStore
   useAuthFlow();
@@ -52,7 +57,7 @@ export default function App() {
               key={route.to}
               path={route.to}
               element={
-                canAccess(route, user?.role)
+                canAccess(route, myRole)
                   ? route.element
                   : <Forbidden roles={route.roles} />
               }

@@ -194,6 +194,14 @@ describe('api - 破壊的操作の宛先とメソッド', () => {
       url: '/api/v1/tenants/t1/webhooks/w1',
       method: 'DELETE',
     },
+    // #36: Members ページのロール変更。adminResetMfa と同じ path だが
+    // method が PATCH。誤って DELETE にするとメンバー削除になり事故。
+    {
+      name: 'updateMember',
+      call: () => api.updateMember('t1', 'u1', { role: 'ADMIN' }),
+      url: '/api/v1/tenants/t1/members/u1',
+      method: 'PATCH',
+    },
   ]
 
   for (const c of cases) {

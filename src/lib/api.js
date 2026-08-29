@@ -111,6 +111,11 @@ export const api = {
 
   // Members
   listMembers: (tid, params) => params ? paginated(`/tenants/${tid}/members`, params) : items(`/tenants/${tid}/members`),
+  // #36: Members ページのロール変更 (PATCH) の宛先。adminResetMfa と同じ
+  // /tenants/:tid/members/:uid を使い、method だけ PATCH に変える。
+  // 破壊的ではないが権限変更は元に戻せない面があるので、回帰テストで
+  // 宛先・メソッドを固定する（下記 api.test.js の cases に追加）。
+  updateMember: (tid, uid, data) => request(`/tenants/${tid}/members/${uid}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Invitations
   listInvitations: (tid, params) => params ? paginated(`/tenants/${tid}/invitations`, params) : items(`/tenants/${tid}/invitations`),
