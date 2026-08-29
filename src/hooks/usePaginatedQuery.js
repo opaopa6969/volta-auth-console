@@ -58,9 +58,6 @@ export function usePaginatedQuery(fetchFn, { defaultSize = 20, defaultSort } = {
     updateParam('q', q);
   }, [updateParam]);
 
-  const fetchRef = useRef(fetchFn);
-  fetchRef.current = fetchFn;
-
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
 
@@ -72,7 +69,7 @@ export function usePaginatedQuery(fetchFn, { defaultSize = 20, defaultSort } = {
       if (sort) params.sort = sort;
       if (search) params.q = search;
 
-      const result = await fetchRef.current(params);
+      const result = await fetchFn(params);
       setData(result.items || []);
       setTotal(result.total || 0);
       setPages(result.pages || Math.ceil((result.total || 0) / size));
@@ -82,9 +79,13 @@ export function usePaginatedQuery(fetchFn, { defaultSize = 20, defaultSort } = {
     } finally {
       setIsLoading(false);
     }
-  }, [page, size, sort, search]);
+  }, [page, size, sort, search, fetchFn]);
 
-  // Re-fetch when URL params or filters change
+  // Re-fetch when URL params, filters, or fetchFn change.
+  // #37: fetchFn は呼び出し側が useCallback で依存(tenantId / statusFilter 等)を
+  // 取り込んだ関数。それが変わったときも再 fetch しないと、Members のテナント切替・
+  // Invitations のステータスフィルタ変更が URL params や filters を変えない限り
+  // 画面に反映されない。fetchFn を依存に追加してこの経路を塞ぐ。
   useEffect(() => {
     refresh();
   }, [refresh, filters]);

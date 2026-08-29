@@ -2,10 +2,14 @@ import { NavLink } from 'react-router-dom';
 import packageJson from '../../package.json';
 import { visibleRoutes } from '../routes';
 import { useAuthStore } from '../store/authStore';
+import { useCurrentTenant } from '../hooks/useCurrentTenant';
 
 export default function Sidebar({ user }) {
   // リンク一覧は src/routes.jsx が単一の出所（#12）。ここで独自に持たない。
-  const links = visibleRoutes(user?.role);
+  // #38: user.role は /users/me に無く /users/me/tenants 側にしか無い（テナントごとに
+  // 違う）。認可用のロールは「現在選択中のテナントでの自分のロール」を使う。
+  const { myRole } = useCurrentTenant();
+  const links = visibleRoutes(myRole);
 
   // #26: テナント固有ページ（Members / Invitations / Webhooks / IdP / MFA リセット）
   // がどのテナントを見ているのかを画面に出し、複数所属なら切り替えられるようにする。
