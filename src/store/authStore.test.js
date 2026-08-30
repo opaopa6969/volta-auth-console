@@ -57,3 +57,41 @@ describe('authStore のテナント選択', () => {
     expect(useAuthStore.getState().currentTenantId()).toBeNull();
   });
 });
+
+// ── currentTenantId のフィールド形状フォールバック (#26) ──────────
+//
+// /users/me/tenants のテナントが id か tenantId かは時期で揺れた。両方を見ないと
+// 「テナントを選択しているはずなのに所属無し扱いで null」になり、API に
+// undefined が渡って /tenants/null/... 事故になる。
+describe('authStore の currentTenantId — フィールド形状', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useAuthStore.setState({
+      user: null, tenants: [], selectedTenantId: null,
+      loading: true, error: null, authenticated: false,
+    });
+  });
+
+  it('tenant.id 形状を認識する', () => {
+    useAuthStore.getState().setAuth({}, [{ id: 't1', name: 'Alpha' }]);
+    expect(useAuthStore.getState().currentTenantId()).toBe('t1');
+  });
+
+  it('tenant.tenantId 形状も認識する (#26 フォールバック)', () => {
+    useAuthStore.getState().setAuth({}, [{ tenantId: 't2', name: 'Beta' }]);
+    expect(useAuthStore.getState().currentTenantId()).toBe('t2');
+  });
+
+  it('selectedTenantId が tenant.tenantId 形状と一致しても選択される', () => {
+    useAuthStore.getState().setAuth({}, [{ tenantId: 't2', name: 'Beta' }]);
+    useAuthStore.getState().setSelectedTenantId('t2');
+    expect(useAuthStore.getState().currentTenantId()).toBe('t2');
+  });
+
+  it('user.tenantId が存在すれば所属が空でも fallback する', () => {
+    // /users/me が tenantId を返すが /users/me/tenants が未所属を返す
+    // (レース等) 場合の防御
+    useAuthStore.getState().setAuth({ tenantId: 't-orphan' }, []);
+    expect(useAuthStore.getState().currentTenantId()).toBe('t-orphan');
+  });
+});
