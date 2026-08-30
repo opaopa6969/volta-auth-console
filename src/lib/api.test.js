@@ -268,4 +268,60 @@ describe('api - 401 ハンドラ', () => {
     expect(handler).not.toHaveBeenCalled()
     setUnauthorizedHandler(null)
   })
+
+  // ── 回帰しやすい分岐 (#24) ─────────────────────────────────────
+  //
+  // 401 以外のエラー(403/500/503 等)でリダイレクトが走ると、権限不足のユーザーが
+  // ログアウトさせられ続ける事故になる。401 だけを通知する。
+  it('401 以外のエラー(status 403) ではハンドラを呼ばない', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 403,
+      ok: false,
+      json: async () => ({ detail: 'Forbidden' }),
+    })
+
+    await expect(api.me()).rejects.toThrow('Forbidden')
+    expect(handler).not.toHaveBeenCalled()
+    setUnauthorizedHandler(null)
+  })
+
+  it('500 サーバーエラーでもハンドラを呼ばない', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 500,
+      ok: false,
+      json: async () => ({ detail: 'Internal error' }),
+    })
+
+    await expect(api.me()).rejects.toThrow('Internal error')
+    expect(handler).not.toHaveBeenCalled()
+    setUnauthorizedHandler(null)
+  })
+
+  // ── 抑制のリセット (#24) ────────────────────────────────────────
+  //
+  // 複数 401 でハンドラを1回にまとめた後、setUnauthorizedHandler で
+  // 差し替えたとき(unmount / 再ログイン等)は抑制を解除しないと
+  // 次の 401 を取りこぼす。テストや再ログイン後で致命的な回帰。
+  it('setUnauthorizedHandler で差し替えると抑制がリセットされる', async () => {
+    const handler1 = vi.fn()
+    setUnauthorizedHandler(handler1)
+    globalThis.fetch = vi.fn().mockResolvedValue({ status: 401, ok: false, json: async () => ({}) })
+
+    await expect(api.me()).rejects.toThrow('Unauthorized')
+    expect(handler1).toHaveBeenCalledTimes(1)
+    // 同じセッションでの追加 401 は抑制される
+    await expect(api.me()).rejects.toThrow('Unauthorized')
+    expect(handler1).toHaveBeenCalledTimes(1)
+
+    // ハンドラを差し替えたら抑制解除 → 次の 401 を捕まえる
+    const handler2 = vi.fn()
+    setUnauthorizedHandler(handler2)
+    await expect(api.me()).rejects.toThrow('Unauthorized')
+    expect(handler2).toHaveBeenCalledTimes(1)
+    setUnauthorizedHandler(null)
+  })
 })
