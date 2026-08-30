@@ -13,7 +13,11 @@ export default function Sessions() {
   const handleRevoke = async (session) => {
     if (!await confirm({ message: `Revoke session from ${session.ip || 'unknown IP'}?`, danger: true })) return;
     try {
-      await api.revokeSession(session.id);
+      // #40: このページは /admin/sessions(全ユーザーのセッション一覧)を表示する。
+      // revokeSession(/users/me/sessions/:id) は自分自身のセッションしか失効
+      // できないため、他人のセッションを revoke すると 404/403 になる。
+      // 管理系ルート DELETE /admin/sessions/:id を使う。
+      await api.adminRevokeSession(session.id);
       pq.refresh();
     } catch (err) {
       toast.error(err.message);

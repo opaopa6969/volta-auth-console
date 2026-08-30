@@ -136,6 +136,13 @@ export const api = {
   updateUser: (uid, data) => request(`/users/${uid}`, { method: 'PATCH', body: JSON.stringify(data) }),
   mySessions: () => request('/users/me/sessions').then(d => d.items || d),
   revokeSession: (id) => request(`/users/me/sessions/${id}`, { method: 'DELETE' }),
+  // #40: /sessions ページは /admin/sessions(管理者向け全セッション一覧)を
+  // 表示するため、他人のセッションを revoke するには自分自身向けの
+  // revokeSession(/users/me/sessions/:id) では足りない。管理系の
+  // DELETE /admin/sessions/:id を呼ぶ専用のメソッドを置く。
+  // Settings ページのように「自分自身のセッション一覧」を表示し、そこを
+  // revoke する用途では引き続き revokeSession を使う(Settings.jsx 参照)。
+  adminRevokeSession: (id) => request(`/admin/sessions/${id}`, { method: 'DELETE' }),
 
   // Audit
   listAudit: (params) => params ? paginated('/admin/audit', params) : items('/admin/audit'),

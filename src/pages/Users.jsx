@@ -24,6 +24,12 @@ export default function Users() {
   const pq = usePaginatedQuery(fetchUsers, { defaultSize: 20, defaultSort: 'email' });
 
   const handleResetMfa = async (userId) => {
+    // #41: tenantId が null(テナント未所属)だと URL が /tenants/null/... になり
+    // 404 になる。ボタン無効化で事故を防ぐ第一の壁、ここは押下時の第二の壁。
+    if (!tenantId) {
+      toast.error('No tenant selected. Cannot reset MFA without a tenant.');
+      return;
+    }
     if (!await confirm({ message: 'Reset MFA for this user? They will need to set up MFA again.', danger: true })) return;
     try {
       await api.adminResetMfa(tenantId, userId);
@@ -38,7 +44,9 @@ export default function Users() {
     { key: '_actions', label: '', sortable: false, render: (_, row) =>
       row.mfaEnabled ? (
         <button onClick={() => handleResetMfa(row.id)}
-          className="text-[10px] px-2 py-0.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50">
+          disabled={!tenantId}
+          title={tenantId ? '' : 'No tenant selected'}
+          className="text-[10px] px-2 py-0.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-900/30">
           Reset MFA
         </button>
       ) : null
