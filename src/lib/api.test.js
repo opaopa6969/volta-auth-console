@@ -170,6 +170,15 @@ describe('api - 破壊的操作の宛先とメソッド', () => {
       url: '/api/v1/users/me/sessions/s1',
       method: 'DELETE',
     },
+    // #40: /sessions ページは /admin/sessions の一覧を表示し、他人のセッションも
+    // revoke する。revokeSession は /users/me/sessions/:id に飛ぶため、他人の
+    // セッションを渡すと 404 になる。管理系ルートを別途固定する。
+    {
+      name: 'adminRevokeSession',
+      call: () => api.adminRevokeSession('s2'),
+      url: '/api/v1/admin/sessions/s2',
+      method: 'DELETE',
+    },
     {
       name: 'rotateKeys',
       call: () => api.rotateKeys(),
