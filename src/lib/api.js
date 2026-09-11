@@ -101,6 +101,7 @@ export const api = {
   me: () => request('/users/me'),
   myTenants: () => request('/users/me/tenants').then(d => d.items || d),
   listUsers: (params) => params ? paginated('/admin/users', params) : items('/admin/users'),
+  createUser: (tid, data) => request(`/tenants/${tid}/users`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Tenants
   getTenant: (tid) => request(`/tenants/${tid}`),

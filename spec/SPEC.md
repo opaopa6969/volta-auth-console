@@ -83,6 +83,7 @@ volta-auth-console v0.2.0  ← フッターに固定
 
 #### Users (`/users`)
 - `usePaginatedQuery(api.listUsers, { defaultSize: 20, defaultSort: 'email' })`
+- ADMIN 以上はメール・表示名・ロールを指定してユーザーを事前登録できる。パスワードは扱わず、同じ検証済みメールでの OIDC 初回ログイン時にアカウントを引き継ぐ。
 - MFA 有効ユーザーに "Reset MFA" ボタン → `api.adminResetMfa(tenantId, userId)`
 - URL パラメータ: `?page=&size=&sort=&q=`
 

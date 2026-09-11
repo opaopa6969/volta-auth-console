@@ -137,6 +137,15 @@ describe('api - URL construction', () => {
     expect(url).toContain('/admin/users')
     expect(url).not.toContain('?')
   })
+
+  it('createUser posts the selected tenant and payload', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ status: 201, ok: true, json: async () => ({ id: 'u1' }) })
+    await api.createUser('tenant-1', { email: 'alice@example.com', display_name: 'Alice', role: 'MEMBER' })
+    const [url, options] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/v1/tenants/tenant-1/users')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body)).toEqual({ email: 'alice@example.com', display_name: 'Alice', role: 'MEMBER' })
+  })
 })
 
 // ── 破壊的操作の回帰テスト (#22) ────────────────────────────────────
